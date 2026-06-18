@@ -17,14 +17,16 @@ function requireEnv(name: string, value: string | undefined): string {
 }
 
 const jwtSecret = process.env.JWT_SECRET || (isProduction ? '' : 'dev_secret_change_me');
+const databaseUrl = process.env.DATABASE_URL;
+const directUrl = process.env.DIRECT_URL || databaseUrl;
 
 if (isProduction) {
   requireEnv('JWT_SECRET', jwtSecret);
   if (isWeakJwtSecret(jwtSecret)) {
     throw new Error('JWT_SECRET must be at least 32 characters and not a default value');
   }
-  requireEnv('DATABASE_URL', process.env.DATABASE_URL);
-  requireEnv('DIRECT_URL', process.env.DIRECT_URL);
+  requireEnv('DATABASE_URL', databaseUrl);
+  requireEnv('DIRECT_URL', directUrl);
   requireEnv('FRONTEND_URL', process.env.FRONTEND_URL);
 }
 

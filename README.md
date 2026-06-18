@@ -26,6 +26,10 @@ A full-stack SaaS application for gyms and small businesses to track income, exp
 
 ## Production Deployment
 
+See **[RAILWAY.md](./RAILWAY.md)** for step-by-step Railway deployment (recommended).
+
+### Docker (self-hosted)
+
 ### 1. Configure environment
 
 ```bash
