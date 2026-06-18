@@ -2,16 +2,25 @@ import app from './app';
 import { config } from './config';
 import prisma from './lib/prisma';
 
-const server = app.listen(config.port, () => {
-  console.log(`Fito6 API running on port ${config.port} [${config.nodeEnv}]`);
-});
+async function start() {
+  try {
+    await prisma.$connect();
+    console.log('Database connected');
+  } catch (err) {
+    console.error('Database warmup failed:', (err as Error).message);
+  }
+
+  app.listen(config.port, () => {
+    console.log(`Fito6 API running on port ${config.port} [${config.nodeEnv}]`);
+  });
+}
+
+start();
 
 async function shutdown(signal: string) {
   console.log(`${signal} received, shutting down...`);
-  server.close(async () => {
-    await prisma.$disconnect();
-    process.exit(0);
-  });
+  await prisma.$disconnect();
+  process.exit(0);
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));

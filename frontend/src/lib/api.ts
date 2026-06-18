@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const REQUEST_TIMEOUT_MS = 30_000;
 
 class ApiClient {
   private getToken(): string | null {
@@ -23,14 +24,36 @@ class ApiClient {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-    const data = await res.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Request failed');
+    try {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      let data: { success?: boolean; data?: T; error?: string };
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error('Invalid server response');
+      }
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Request failed');
+      }
+
+      return data.data as T;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out. Check your connection and try again.');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    return data.data;
   }
 
   get<T>(endpoint: string) {
@@ -69,18 +92,25 @@ class ApiClient {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_URL}${endpoint}`, { headers });
-    if (!res.ok) {
-      throw new Error('Download failed');
-    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const res = await fetch(`${API_URL}${endpoint}`, { headers, signal: controller.signal });
+      if (!res.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 

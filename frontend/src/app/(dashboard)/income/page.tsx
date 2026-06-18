@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { QueryState } from '@/components/ui/query-state';
 import { api } from '@/lib/api';
 import { useApiQuery, useCategories, useInvalidate } from '@/hooks/use-api-query';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -45,7 +46,7 @@ function IncomeContent() {
   });
 
   const { data: categories = [] } = useCategories('INCOME');
-  const { data: incomeRes, isLoading } = useApiQuery<PaginatedResponse<Income>>(
+  const { data: incomeRes, isLoading, isError, error, refetch } = useApiQuery<PaginatedResponse<Income>>(
     queryKeys.income(debouncedSearch),
     `/income?search=${debouncedSearch}`
   );
@@ -138,9 +139,13 @@ function IncomeContent() {
 
         <Card>
           <CardContent className="p-0">
-            {isLoading && !incomeRes ? (
-              <div className="p-8 text-center text-muted-foreground">Loading...</div>
-            ) : (
+            <QueryState
+              isLoading={isLoading}
+              isError={isError}
+              error={error}
+              hasData={!!incomeRes}
+              onRetry={() => refetch()}
+            >
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -172,7 +177,7 @@ function IncomeContent() {
                 </table>
                 {!items.length && <div className="p-8 text-center text-muted-foreground">No income records found</div>}
               </div>
-            )}
+            </QueryState>
           </CardContent>
         </Card>
       </div>

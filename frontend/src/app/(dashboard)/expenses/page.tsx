@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { QueryState } from '@/components/ui/query-state';
 import { api } from '@/lib/api';
 import { useApiQuery, useCategories, useInvalidate } from '@/hooks/use-api-query';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -48,7 +49,7 @@ function ExpenseContent() {
 
   const { data: allCategories = [] } = useCategories('EXPENSE');
   const categories = allCategories.filter((c) => c.parentId);
-  const { data: expenseRes, isLoading } = useApiQuery<PaginatedResponse<Expense>>(
+  const { data: expenseRes, isLoading, isError, error, refetch } = useApiQuery<PaginatedResponse<Expense>>(
     queryKeys.expenses(debouncedSearch),
     `/expenses?search=${debouncedSearch}`
   );
@@ -149,9 +150,13 @@ function ExpenseContent() {
 
         <Card>
           <CardContent className="p-0">
-            {isLoading && !expenseRes ? (
-              <div className="p-8 text-center text-muted-foreground">Loading...</div>
-            ) : (
+            <QueryState
+              isLoading={isLoading}
+              isError={isError}
+              error={error}
+              hasData={!!expenseRes}
+              onRetry={() => refetch()}
+            >
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -183,7 +188,7 @@ function ExpenseContent() {
                 </table>
                 {!items.length && <div className="p-8 text-center text-muted-foreground">No expense records found</div>}
               </div>
-            )}
+            </QueryState>
           </CardContent>
         </Card>
       </div>
