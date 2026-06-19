@@ -1,9 +1,10 @@
-import { Income, Category } from '../types/models';
+import { Income } from '../types/models';
 import {
   COL,
   create,
   findMany,
   getById,
+  getAccountMap,
   getCategoryMap,
   getUserMap,
   inDateRange,
@@ -26,6 +27,7 @@ interface IncomeFilters {
 
 async function withRelations(items: Income[]) {
   const categoryMap = await getCategoryMap(items.map((i) => i.categoryId));
+  const accountMap = await getAccountMap(items.map((i) => i.accountId || ''));
   const userMap = await getUserMap(items.map((i) => i.createdById));
 
   return items.map((item) => ({
@@ -36,6 +38,13 @@ async function withRelations(items: Income[]) {
       name: 'Unknown',
       type: 'INCOME' as const,
     },
+    account: item.accountId
+      ? accountMap.get(item.accountId) ?? {
+          id: item.accountId,
+          name: 'Unknown',
+          type: 'OTHER' as const,
+        }
+      : null,
     createdBy: {
       id: item.createdById,
       name: userMap.get(item.createdById)?.name || 'Unknown',
@@ -70,6 +79,7 @@ export const incomeService = {
   async create(data: {
     amount: number;
     categoryId: string;
+    accountId?: string;
     source?: string;
     date: string;
     notes?: string;
@@ -79,6 +89,7 @@ export const incomeService = {
     const income = await create<Income>(COL.income, {
       amount: data.amount,
       categoryId: data.categoryId,
+      accountId: data.accountId || null,
       source: data.source,
       date: new Date(data.date),
       notes: data.notes,
@@ -93,6 +104,7 @@ export const incomeService = {
     data: Partial<{
       amount: number;
       categoryId: string;
+      accountId: string | null;
       source: string;
       date: string;
       notes: string;

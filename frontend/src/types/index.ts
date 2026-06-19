@@ -36,11 +36,25 @@ export interface Category {
   children?: Category[];
 }
 
+export type AccountType = 'BANK' | 'CASH' | 'UPI' | 'CARD' | 'OTHER';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  bankName?: string | null;
+  lastFour?: string | null;
+  openingBalance?: number;
+  isActive: boolean;
+}
+
 export interface Income {
   id: string;
   amount: number;
   categoryId: string;
   category: Category;
+  accountId?: string | null;
+  account?: Account | null;
   source?: string;
   date: string;
   notes?: string;
@@ -53,6 +67,8 @@ export interface Expense {
   amount: number;
   categoryId: string;
   category: Category;
+  accountId?: string | null;
+  account?: Account | null;
   vendor?: string;
   date: string;
   notes?: string;

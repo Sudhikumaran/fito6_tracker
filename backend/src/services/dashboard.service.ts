@@ -5,6 +5,7 @@ import {
   findMany,
   getById,
   getCategoryMap,
+  getAccountMap,
   getUserMap,
   inDateRange,
   sortBy,
@@ -78,6 +79,10 @@ export const dashboardService = {
       ...incomeItems.map((i) => i.categoryId),
       ...expenseItems.map((e) => e.categoryId),
     ]);
+    const accountMap = await getAccountMap([
+      ...incomeItems.map((i) => i.accountId || ''),
+      ...expenseItems.map((e) => e.accountId || ''),
+    ]);
     const userMap = await getUserMap([
       ...incomeItems.map((i) => i.createdById),
       ...expenseItems.map((e) => e.createdById),
@@ -91,6 +96,13 @@ export const dashboardService = {
         name: 'Unknown',
         type: 'INCOME' as const,
       },
+      account: item.accountId
+        ? accountMap.get(item.accountId) ?? {
+            id: item.accountId,
+            name: 'Unknown',
+            type: 'OTHER' as const,
+          }
+        : null,
       createdBy: {
         id: item.createdById,
         name: userMap.get(item.createdById)?.name || 'Unknown',
@@ -105,6 +117,13 @@ export const dashboardService = {
         name: 'Unknown',
         type: 'EXPENSE' as const,
       },
+      account: item.accountId
+        ? accountMap.get(item.accountId) ?? {
+            id: item.accountId,
+            name: 'Unknown',
+            type: 'OTHER' as const,
+          }
+        : null,
       createdBy: {
         id: item.createdById,
         name: userMap.get(item.createdById)?.name || 'Unknown',

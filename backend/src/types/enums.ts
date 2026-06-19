@@ -20,6 +20,14 @@ export enum CategoryType {
   EXPENSE = 'EXPENSE',
 }
 
+export enum AccountType {
+  BANK = 'BANK',
+  CASH = 'CASH',
+  UPI = 'UPI',
+  CARD = 'CARD',
+  OTHER = 'OTHER',
+}
+
 export enum DocumentType {
   BILL = 'BILL',
   INVOICE = 'INVOICE',

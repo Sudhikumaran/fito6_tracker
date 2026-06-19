@@ -1,5 +1,5 @@
-import { CategoryType } from '../src/types/enums';
-import { Category } from '../src/types/models';
+import { CategoryType, AccountType } from '../src/types/enums';
+import { Category, Account } from '../src/types/models';
 import { COL, create, findMany } from '../src/lib/firestore';
 import { settingsService } from '../src/services/audit.service';
 
@@ -19,6 +19,13 @@ const EXPENSE_CATEGORIES: { name: string; children?: string[] }[] = [
   { name: 'Marketing', children: ['Ads', 'Promotion'] },
   { name: 'Equipment', children: ['Purchase', 'Maintenance'] },
   { name: 'Other', children: ['Miscellaneous'] },
+];
+
+const DEFAULT_ACCOUNTS: { name: string; type: AccountType }[] = [
+  { name: 'Cash', type: AccountType.CASH },
+  { name: 'Main Bank Account', type: AccountType.BANK },
+  { name: 'UPI', type: AccountType.UPI },
+  { name: 'Card', type: AccountType.CARD },
 ];
 
 const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [
@@ -51,6 +58,20 @@ async function seedCategories() {
   }
 }
 
+async function ensureAccount(name: string, type: AccountType) {
+  const existing = (await findMany<Account>(COL.accounts)).find(
+    (a) => a.name === name && a.type === type && a.isActive
+  );
+  if (existing) return existing;
+  return create(COL.accounts, { name, type, openingBalance: 0, isActive: true });
+}
+
+async function seedAccounts() {
+  for (const account of DEFAULT_ACCOUNTS) {
+    await ensureAccount(account.name, account.type);
+  }
+}
+
 async function seedSettings() {
   for (const setting of DEFAULT_SETTINGS) {
     await settingsService.set(setting.key, setting.value);
@@ -58,8 +79,9 @@ async function seedSettings() {
 }
 
 async function main() {
-  console.log('Seeding reference data (categories and settings)...');
+  console.log('Seeding reference data (categories, accounts, and settings)...');
   await seedCategories();
+  await seedAccounts();
   await seedSettings();
   console.log('Reference data seed complete.');
 }

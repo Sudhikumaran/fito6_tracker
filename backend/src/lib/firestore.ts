@@ -6,6 +6,7 @@ export const COL = {
   users: 'users',
   staff: 'staff',
   categories: 'categories',
+  accounts: 'accounts',
   income: 'income',
   expenses: 'expenses',
   attendance: 'attendance',
@@ -185,7 +186,15 @@ export async function getUserMap(ids: string[]) {
 }
 
 export async function getCategoryMap(ids: string[]) {
-  const unique = [...new Set(ids)];
-  const categories = await Promise.all(unique.map((id) => getById<{ name: string }>(COL.categories, id)));
+  const unique = [...new Set(ids.filter(Boolean))];
+  const categories = await Promise.all(unique.map((id) => getById<{ name: string; type?: string }>(COL.categories, id)));
   return new Map(unique.map((id, i) => [id, categories[i]]));
+}
+
+export async function getAccountMap(ids: string[]) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const accounts = await Promise.all(
+    unique.map((id) => getById<{ name: string; type: string }>(COL.accounts, id))
+  );
+  return new Map(unique.map((id, i) => [id, accounts[i]]));
 }

@@ -15,8 +15,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QueryState } from '@/components/ui/query-state';
 import { CategorySelectField } from '@/components/forms/category-select-field';
+import { AccountSelectField } from '@/components/forms/account-select-field';
 import { api } from '@/lib/api';
-import { useApiQuery, useCategories, useInvalidate } from '@/hooks/use-api-query';
+import { useApiQuery, useCategories, useAccounts, useInvalidate } from '@/hooks/use-api-query';
 import { useDebounce } from '@/hooks/use-debounce';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore, isAdmin } from '@/stores/auth.store';
@@ -26,6 +27,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 const schema = z.object({
   amount: z.coerce.number().positive(),
   categoryId: z.string().min(1),
+  accountId: z.string().min(1, 'Select an account'),
   source: z.string().optional(),
   date: z.string().min(1),
   notes: z.string().optional(),
@@ -47,6 +49,7 @@ function IncomeContent() {
 
   const { data: allCategories = [] } = useCategories('INCOME');
   const categories = allCategories.filter((c) => !c.parentId);
+  const { data: accounts = [] } = useAccounts();
   const { data: incomeRes, isLoading, isError, error, refetch } = useApiQuery<PaginatedResponse<Income>>(
     queryKeys.income(debouncedSearch),
     `/income?search=${debouncedSearch}`
@@ -113,6 +116,22 @@ function IncomeContent() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>Received In</Label>
+                  <Controller
+                    name="accountId"
+                    control={control}
+                    render={({ field }) => (
+                      <AccountSelectField
+                        value={field.value}
+                        onChange={field.onChange}
+                        accounts={accounts}
+                        onAccountAdded={() => invalidate(queryKeys.accounts())}
+                        error={errors.accountId?.message}
+                      />
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>Source</Label>
                   <Input {...register('source')} placeholder="e.g. Monthly members" />
                 </div>
@@ -150,6 +169,7 @@ function IncomeContent() {
                     <tr className="border-b border-border text-muted-foreground">
                       <th className="text-left p-4 font-medium">Date</th>
                       <th className="text-left p-4 font-medium">Category</th>
+                      <th className="text-left p-4 font-medium">Account</th>
                       <th className="text-left p-4 font-medium">Source</th>
                       <th className="text-right p-4 font-medium">Amount</th>
                       <th className="text-left p-4 font-medium">By</th>
@@ -161,6 +181,7 @@ function IncomeContent() {
                       <tr key={item.id} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
                         <td className="p-4">{formatDate(item.date)}</td>
                         <td className="p-4"><Badge variant="secondary">{item.category?.name ?? 'Unknown'}</Badge></td>
+                        <td className="p-4 text-muted-foreground">{item.account?.name ?? '—'}</td>
                         <td className="p-4 text-muted-foreground">{item.source || '—'}</td>
                         <td className="p-4 text-right font-medium text-success">{formatCurrency(Number(item.amount))}</td>
                         <td className="p-4 text-muted-foreground">{item.createdBy?.name ?? 'Unknown'}</td>

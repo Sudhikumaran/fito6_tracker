@@ -27,6 +27,15 @@ export function useCategories(type: 'INCOME' | 'EXPENSE') {
   );
 }
 
+export function useAccounts(type?: import('@/types').AccountType) {
+  const endpoint = type ? `/accounts?type=${type}` : '/accounts';
+  return useApiQuery<import('@/types').Account[]>(
+    queryKeys.accounts(type),
+    endpoint,
+    { staleTime: 10 * 60_000 }
+  );
+}
+
 export function useInvalidate() {
   const queryClient = useQueryClient();
   return (queryKey: readonly unknown[]) =>
@@ -48,6 +57,8 @@ export function prefetchRoute(queryClient: ReturnType<typeof useQueryClient>, hr
       return prefetch(queryKeys.income(''), '/income?search=');
     case '/expenses':
       return prefetch(queryKeys.expenses(''), '/expenses?search=');
+    case '/accounts':
+      return prefetch(queryKeys.accounts(), '/accounts');
     case '/staff':
       return prefetch(queryKeys.staffList, '/staff?includeInactive=true');
     case '/tasks':

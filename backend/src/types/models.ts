@@ -1,4 +1,5 @@
 import {
+  AccountType,
   CategoryType,
   DocumentType,
   NotificationType,
@@ -42,10 +43,23 @@ export interface Category {
   updatedAt: Date;
 }
 
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  bankName?: string | null;
+  lastFour?: string | null;
+  openingBalance?: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Income {
   id: string;
   amount: number;
   categoryId: string;
+  accountId?: string | null;
   source?: string | null;
   date: Date;
   notes?: string | null;
@@ -59,6 +73,7 @@ export interface Expense {
   id: string;
   amount: number;
   categoryId: string;
+  accountId?: string | null;
   vendor?: string | null;
   date: Date;
   notes?: string | null;

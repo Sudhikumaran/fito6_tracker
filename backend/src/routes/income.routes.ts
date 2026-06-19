@@ -13,6 +13,7 @@ router.use(authenticate);
 const createSchema = z.object({
   amount: z.number().positive(),
   categoryId: z.string(),
+  accountId: z.string().optional(),
   source: z.string().optional(),
   date: z.string(),
   notes: z.string().optional(),

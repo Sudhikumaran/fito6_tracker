@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   Dumbbell,
   BookOpen,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { prefetchRoute } from '@/hooks/use-api-query';
@@ -30,6 +31,7 @@ const adminNav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/income', label: 'Income', icon: TrendingUp },
   { href: '/expenses', label: 'Expenses', icon: TrendingDown },
+  { href: '/accounts', label: 'Accounts', icon: Wallet },
   { href: '/ledger', label: 'Ledger', icon: BookOpen },
   { href: '/staff', label: 'Staff', icon: Users },
   { href: '/attendance', label: 'Attendance', icon: Calendar },
@@ -46,6 +48,7 @@ const staffNav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/income', label: 'Income', icon: TrendingUp },
   { href: '/expenses', label: 'Expenses', icon: TrendingDown },
+  { href: '/accounts', label: 'Accounts', icon: Wallet },
   { href: '/attendance', label: 'Attendance', icon: Calendar },
   { href: '/tasks', label: 'My Tasks', icon: CheckSquare },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
