@@ -26,9 +26,19 @@ const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || '';
 const firebaseClientEmail = process.env.FIREBASE_CLIENT_EMAIL || '';
 const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY || '';
 
-function resolveStorageBucket(): string {
-  if (process.env.FIREBASE_STORAGE_BUCKET) return process.env.FIREBASE_STORAGE_BUCKET;
-  if (firebaseProjectId) return `${firebaseProjectId}.appspot.com`;
+function parseServiceAccountJson(): { project_id?: string } | null {
+  if (!firebaseServiceAccountJson) return null;
+  try {
+    return JSON.parse(firebaseServiceAccountJson) as { project_id?: string };
+  } catch {
+    return null;
+  }
+}
+
+function resolveProjectId(): string {
+  if (firebaseProjectId) return firebaseProjectId;
+  const fromJson = parseServiceAccountJson()?.project_id;
+  if (fromJson) return fromJson;
 
   const credPath = firebaseServiceAccountPath
     ? path.resolve(process.cwd(), firebaseServiceAccountPath)
@@ -37,7 +47,7 @@ function resolveStorageBucket(): string {
   if (fs.existsSync(credPath)) {
     try {
       const parsed = JSON.parse(fs.readFileSync(credPath, 'utf-8')) as { project_id?: string };
-      if (parsed.project_id) return `${parsed.project_id}.appspot.com`;
+      if (parsed.project_id) return parsed.project_id;
     } catch {
       // fall through
     }
@@ -46,6 +56,16 @@ function resolveStorageBucket(): string {
   return '';
 }
 
+function resolveStorageBucket(): string {
+  if (process.env.FIREBASE_STORAGE_BUCKET) return process.env.FIREBASE_STORAGE_BUCKET;
+
+  const projectId = resolveProjectId();
+  if (projectId) return `${projectId}.appspot.com`;
+
+  return '';
+}
+
+const resolvedProjectId = resolveProjectId();
 const firebaseStorageBucket = resolveStorageBucket();
 
 function hasFirebaseCredentials() {
@@ -84,7 +104,7 @@ export const config = {
   firebase: {
     serviceAccountPath: firebaseServiceAccountPath,
     serviceAccountJson: firebaseServiceAccountJson,
-    projectId: firebaseProjectId,
+    projectId: resolvedProjectId || firebaseProjectId,
     clientEmail: firebaseClientEmail,
     privateKey: firebasePrivateKey,
     storageBucket: firebaseStorageBucket,
