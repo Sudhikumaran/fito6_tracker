@@ -20,11 +20,14 @@ router.get(
 
 router.post(
   '/',
-  adminOnly,
   auditLog('CREATE_CATEGORY', 'Category'),
   asyncHandler(async (req, res) => {
     const data = z
-      .object({ name: z.string(), type: z.nativeEnum(CategoryType), parentId: z.string().optional() })
+      .object({
+        name: z.string().trim().min(2, 'Category name must be at least 2 characters'),
+        type: z.nativeEnum(CategoryType),
+        parentId: z.string().optional(),
+      })
       .parse(req.body);
     const category = await categoryService.create(data);
     sendSuccess(res, category, 201);

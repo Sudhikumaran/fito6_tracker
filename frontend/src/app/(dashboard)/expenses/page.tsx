@@ -10,11 +10,11 @@ import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QueryState } from '@/components/ui/query-state';
+import { CategorySelectField } from '@/components/forms/category-select-field';
 import { api } from '@/lib/api';
 import { useApiQuery, useCategories, useInvalidate } from '@/hooks/use-api-query';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -48,6 +48,7 @@ function ExpenseContent() {
   });
 
   const { data: allCategories = [] } = useCategories('EXPENSE');
+  const parentGroups = allCategories.filter((c) => !c.parentId);
   const categories = allCategories.filter((c) => c.parentId);
   const { data: expenseRes, isLoading, isError, error, refetch } = useApiQuery<PaginatedResponse<Expense>>(
     queryKeys.expenses(debouncedSearch),
@@ -103,19 +104,17 @@ function ExpenseContent() {
                     name="categoryId"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <CategorySelectField
+                        type="EXPENSE"
+                        value={field.value}
+                        onChange={field.onChange}
+                        categories={categories}
+                        parentGroups={parentGroups}
+                        onCategoryAdded={() => invalidate(queryKeys.categories('EXPENSE'))}
+                        error={errors.categoryId?.message}
+                      />
                     )}
                   />
-                  {errors.categoryId && <p className="text-xs text-destructive">{errors.categoryId.message}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Vendor</Label>

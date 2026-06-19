@@ -10,11 +10,11 @@ import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QueryState } from '@/components/ui/query-state';
+import { CategorySelectField } from '@/components/forms/category-select-field';
 import { api } from '@/lib/api';
 import { useApiQuery, useCategories, useInvalidate } from '@/hooks/use-api-query';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -45,7 +45,8 @@ function IncomeContent() {
     defaultValues: { date: new Date().toISOString().split('T')[0] },
   });
 
-  const { data: categories = [] } = useCategories('INCOME');
+  const { data: allCategories = [] } = useCategories('INCOME');
+  const categories = allCategories.filter((c) => !c.parentId);
   const { data: incomeRes, isLoading, isError, error, refetch } = useApiQuery<PaginatedResponse<Income>>(
     queryKeys.income(debouncedSearch),
     `/income?search=${debouncedSearch}`
@@ -100,19 +101,16 @@ function IncomeContent() {
                     name="categoryId"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <CategorySelectField
+                        type="INCOME"
+                        value={field.value}
+                        onChange={field.onChange}
+                        categories={categories}
+                        onCategoryAdded={() => invalidate(queryKeys.categories('INCOME'))}
+                        error={errors.categoryId?.message}
+                      />
                     )}
                   />
-                  {errors.categoryId && <p className="text-xs text-destructive">{errors.categoryId.message}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Source</Label>
