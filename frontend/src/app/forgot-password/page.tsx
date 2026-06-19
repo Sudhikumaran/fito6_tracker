@@ -16,6 +16,7 @@ const schema = z.object({ email: z.string().email() });
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [devResetUrl, setDevResetUrl] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -23,13 +24,13 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
     setLoading(true);
+    setError('');
     try {
       const result = await api.post<{ message: string; resetUrl?: string }>('/auth/forgot-password', data);
       if (result.resetUrl) setDevResetUrl(result.resetUrl);
       setSent(true);
     } catch (e) {
-      setSent(true);
-      if (e instanceof Error) setDevResetUrl(e.message);
+      setError(e instanceof Error ? e.message : 'Unable to send reset email');
     } finally {
       setLoading(false);
     }
@@ -46,14 +47,20 @@ export default function ForgotPasswordPage() {
           <div>
             <h1 className="text-2xl font-bold">Forgot Password</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Admin accounts only. Staff passwords are set by your administrator.
+              Enter your account email and we&apos;ll send you a link to reset your password.
             </p>
           </div>
+
+          {error && (
+            <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
 
           {sent ? (
             <div className="space-y-3">
               <div className="rounded-xl bg-success/10 border border-success/20 px-4 py-3 text-sm text-success">
-                If an admin account exists for that email, a reset link has been sent.
+                If an account exists for that email, a password reset link has been sent. Check your inbox and spam folder.
               </div>
               {devResetUrl && devResetUrl.startsWith('http') && (
                 <div className="rounded-xl bg-muted px-4 py-3 text-xs break-all">
@@ -65,8 +72,8 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Admin email</Label>
-                <Input id="email" type="email" {...register('email')} />
+                <Label htmlFor="email">Email address</Label>
+                <Input id="email" type="email" placeholder="you@example.com" {...register('email')} />
                 {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>

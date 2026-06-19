@@ -40,13 +40,22 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
 
   await sendEmail({
     to,
-    subject: 'Fito6 — Reset your admin password',
-    text: `Hi ${name},\n\nReset your password using this link (valid for 1 hour):\n${resetUrl}\n\nIf you did not request this, ignore this email.`,
+    subject: 'Fito6 — Reset your password',
+    text: `Hi ${name},\n\nWe received a request to reset your Fito6 password.\n\nReset your password (link expires in 1 hour):\n${resetUrl}\n\nIf you did not request this, you can safely ignore this email. Your password will not change.`,
     html: `
-      <p>Hi ${name},</p>
-      <p>Click the link below to reset your <strong>Fito6 admin</strong> password. This link expires in 1 hour.</p>
-      <p><a href="${resetUrl}">${resetUrl}</a></p>
-      <p>If you did not request this, you can ignore this email.</p>
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#111">
+        <h2 style="margin-bottom:8px">Reset your password</h2>
+        <p>Hi ${name},</p>
+        <p>We received a request to reset your <strong>Fito6</strong> account password.</p>
+        <p style="margin:24px 0">
+          <a href="${resetUrl}" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">
+            Reset Password
+          </a>
+        </p>
+        <p style="font-size:13px;color:#555">This link expires in 1 hour. If the button does not work, copy this URL:</p>
+        <p style="font-size:13px;word-break:break-all"><a href="${resetUrl}">${resetUrl}</a></p>
+        <p style="font-size:13px;color:#555">If you did not request a password reset, ignore this email.</p>
+      </div>
     `,
   });
 }
@@ -64,10 +73,10 @@ export async function sendStaffWelcomeEmail(
     text: `Hi ${name},\n\nAn admin created your Fito6 staff account.\nLogin: ${loginUrl}\nEmail: ${to}\nTemporary password: ${temporaryPassword}\n\nPlease change your password after logging in if your admin asks you to.`,
     html: `
       <p>Hi ${name},</p>
-      <p>An admin created your <strong>Fito6</strong> staff account.</p>
+      <p>Your <strong>Fito6</strong> staff account has been created.</p>
       <p><a href="${loginUrl}">${loginUrl}</a></p>
       <p><strong>Email:</strong> ${to}<br/><strong>Temporary password:</strong> ${temporaryPassword}</p>
-      <p>Contact your admin if you need a new password.</p>
+      <p>You can change your password anytime using <strong>Forgot password</strong> on the login page.</p>
     `,
   });
 }

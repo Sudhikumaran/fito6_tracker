@@ -1,4 +1,3 @@
-import { Role } from '../types/enums';
 import { User, Staff } from '../types/models';
 import { COL, create, findMany, findOne, getById, update } from '../lib/firestore';
 import { hashPassword, comparePassword, validatePassword } from '../utils/password';
@@ -38,10 +37,10 @@ export const authService = {
 
   async forgotPassword(email: string) {
     const genericMessage =
-      'If an admin account exists for this email, a reset link has been sent.';
+      'If an account exists for this email, a password reset link has been sent.';
 
     const user = await findOne<User>(COL.users, 'email', email.toLowerCase());
-    if (!user || !user.isActive || user.role !== Role.ADMIN) {
+    if (!user || !user.isActive) {
       return { message: genericMessage };
     }
 
@@ -60,7 +59,7 @@ export const authService = {
         }
       }
     } else if (config.isProduction) {
-      console.error('SMTP not configured — cannot send admin password reset email');
+      console.error('SMTP not configured — cannot send password reset email');
       throw new AppError(503, 'Password reset email is not configured.');
     }
 
