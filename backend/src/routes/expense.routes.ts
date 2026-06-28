@@ -58,7 +58,10 @@ router.post(
       ...req.body,
       amount: parseFloat(req.body.amount),
       isRecurring: req.body.isRecurring === 'true',
-      recurringDay: req.body.recurringDay ? parseInt(req.body.recurringDay) : undefined,
+      recurringDay:
+        req.body.isRecurring === 'true' && req.body.recurringDay
+          ? parseInt(req.body.recurringDay)
+          : undefined,
     });
     let attachment: string | undefined;
     if (req.file) {

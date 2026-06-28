@@ -37,8 +37,16 @@ const baseSchema = z.object({
   periodMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Select bill-for month'),
   notes: z.string().optional(),
   isRecurring: z.boolean().optional(),
-  recurringDay: z.coerce.number().min(1).max(31).optional(),
+  recurringDay: z.union([z.string(), z.number()]).optional(),
 });
+
+type ExpenseFormValues = z.infer<typeof baseSchema>;
+
+function parseRecurringDay(value: unknown): number | undefined {
+  if (value === '' || value === undefined || value === null) return undefined;
+  const n = typeof value === 'number' ? value : parseInt(String(value), 10);
+  return Number.isNaN(n) ? undefined : n;
+}
 
 function isSalaryCategory(name?: string) {
   return !!name && /salary|payroll|wage|staff|maid|cleaning/i.test(name);
@@ -67,11 +75,17 @@ function ExpenseContent() {
         if (fieldConfig.expense.paymentMode && !data.accountId) {
           ctx.addIssue({ code: 'custom', message: 'Select an account', path: ['accountId'] });
         }
+        const day = parseRecurringDay(data.recurringDay);
+        if (data.isRecurring) {
+          if (!day || day < 1 || day > 31) {
+            ctx.addIssue({ code: 'custom', message: 'Enter recurring day (1-31)', path: ['recurringDay'] });
+          }
+        }
       }),
     [fieldConfig]
   );
 
-  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<z.infer<typeof baseSchema>>({
+  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<ExpenseFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       date: today,
@@ -83,6 +97,7 @@ function ExpenseContent() {
 
   const paymentDate = watch('date');
   const categoryId = watch('categoryId');
+  const isRecurring = watch('isRecurring');
 
   const { data: allCategories = [] } = useCategories('EXPENSE');
   const parentGroups = allCategories.filter((c) => !c.parentId);
@@ -99,18 +114,23 @@ function ExpenseContent() {
   const suggestPartyType = isSalaryCategory(categoryName) ? 'STAFF' as const : 'VENDOR' as const;
 
   useEffect(() => {
+    if (!isRecurring) setValue('recurringDay', '');
+  }, [isRecurring, setValue]);
+
+  useEffect(() => {
     if (!paymentDate) return;
     const categoryName = categories.find((c) => c.id === categoryId)?.name;
     setValue('periodMonth', suggestExpensePeriodMonth(paymentDate, categoryName));
   }, [paymentDate, categoryId, categories, setValue]);
 
-  const onSubmit = async (data: z.infer<typeof baseSchema>) => {
+  const onSubmit = async (data: ExpenseFormValues) => {
     const catName = categories.find((c) => c.id === data.categoryId)?.name;
     if (fieldConfig.expense.party && isSalaryCategory(catName) && !data.partyId) {
       setPartyError('Select a party for salary and staff expenses');
       return;
     }
     setPartyError('');
+    const recurringDay = parseRecurringDay(data.recurringDay);
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -123,8 +143,10 @@ function ExpenseContent() {
       formData.append('periodMonth', data.periodMonth);
       if (data.partyId) formData.append('partyId', data.partyId);
       if (data.notes) formData.append('notes', data.notes);
-      if (data.isRecurring) formData.append('isRecurring', 'true');
-      if (data.recurringDay) formData.append('recurringDay', String(data.recurringDay));
+      if (data.isRecurring) {
+        formData.append('isRecurring', 'true');
+        if (recurringDay) formData.append('recurringDay', String(recurringDay));
+      }
       if (fieldConfig.expense.attachment && attachment) formData.append('attachment', attachment);
 
       await api.post('/expenses', formData);
@@ -291,10 +313,15 @@ function ExpenseContent() {
                     Recurring Expense
                   </label>
                 </div>
-                <div className="space-y-2">
-                  <Label>Recurring Day (1-31)</Label>
-                  <Input type="number" min={1} max={31} {...register('recurringDay')} />
-                </div>
+                {isRecurring && (
+                  <div className="space-y-2">
+                    <Label>Recurring Day (1-31)</Label>
+                    <Input type="number" min={1} max={31} {...register('recurringDay')} />
+                    {errors.recurringDay && (
+                      <p className="text-xs text-destructive">{errors.recurringDay.message}</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="md:col-span-2 flex gap-3 pt-2">
                   <Button type="submit" disabled={submitting}>

@@ -132,7 +132,7 @@ export const expenseService = {
       notes: data.notes,
       attachment: data.attachment,
       isRecurring: data.isRecurring || false,
-      recurringDay: data.recurringDay,
+      recurringDay: data.isRecurring ? data.recurringDay : undefined,
       createdById: data.createdById,
     });
     return (await withRelations([expense]))[0];
