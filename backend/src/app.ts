@@ -21,6 +21,7 @@ import reportRoutes from './routes/report.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import auditRoutes, { settingsRouter } from './routes/audit.routes';
 import ledgerRoutes from './routes/ledger.routes';
+import profitLossRoutes from './routes/profit-loss.routes';
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/ledger', ledgerRoutes);
+app.use('/api/profit-loss', profitLossRoutes);
 app.use('/api/settings', settingsRouter);
 
 app.use(notFoundHandler);

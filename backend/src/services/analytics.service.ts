@@ -1,5 +1,6 @@
-import { Category, Expense, Income } from '../types/models';
+import { Expense, Income } from '../types/models';
 import { COL, findMany, getCategoryMap, inDateRange, sumAmounts } from '../lib/firestore';
+import { periodMonthFromDate, periodMonthInRange, resolveExpensePeriodMonth } from '../utils/period';
 
 type Period = 'daily' | 'weekly' | 'monthly';
 
@@ -92,18 +93,28 @@ export const analyticsService = {
     const endOfRange = input?.dateTo ? new Date(input.dateTo) : undefined;
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
+    const periodFrom = input?.dateFrom
+      ? periodMonthFromDate(input.dateFrom)
+      : periodMonthFromDate(startOfMonth);
+    const periodTo = input?.dateTo ? periodMonthFromDate(input.dateTo) : periodFrom;
+
     const [incomes, expenses] = await Promise.all([
       findMany<Income>(COL.income),
       findMany<Expense>(COL.expenses),
     ]);
 
     const grossRevenue = sumAmounts(incomes, startOfMonth, endOfRange);
-    const totalExpense = sumAmounts(expenses, startOfMonth, endOfRange);
+    const filteredExpenses = expenses.filter((e) =>
+      periodMonthInRange(resolveExpensePeriodMonth(e), periodFrom, periodTo)
+    );
+    const totalExpense = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const netProfit = grossRevenue - totalExpense;
     const profitMargin = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
 
     const yearlyRevenue = sumAmounts(incomes, startOfYear);
-    const yearlyExpense = sumAmounts(expenses, startOfYear);
+    const yearlyExpenseTotal = expenses
+      .filter((e) => resolveExpensePeriodMonth(e).startsWith(String(now.getFullYear())))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
 
     return {
       grossProfit: grossRevenue,
@@ -111,8 +122,8 @@ export const analyticsService = {
       profitMargin: Math.round(profitMargin * 100) / 100,
       yearly: {
         revenue: yearlyRevenue,
-        expense: yearlyExpense,
-        profit: yearlyRevenue - yearlyExpense,
+        expense: yearlyExpenseTotal,
+        profit: yearlyRevenue - yearlyExpenseTotal,
       },
     };
   },

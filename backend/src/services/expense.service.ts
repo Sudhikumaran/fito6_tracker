@@ -14,6 +14,7 @@ import {
   sortBy,
   update,
 } from '../lib/firestore';
+import { isValidPeriodMonth, periodMonthFromDate } from '../utils/period';
 import { AppError } from '../utils/response';
 
 interface ExpenseFilters {
@@ -84,18 +85,25 @@ export const expenseService = {
     accountId?: string;
     vendor?: string;
     date: string;
+    periodMonth?: string;
     notes?: string;
     attachment?: string;
     isRecurring?: boolean;
     recurringDay?: number;
     createdById: string;
   }) {
+    const periodMonth =
+      data.periodMonth && isValidPeriodMonth(data.periodMonth)
+        ? data.periodMonth
+        : periodMonthFromDate(data.date);
+
     const expense = await create<Expense>(COL.expenses, {
       amount: data.amount,
       categoryId: data.categoryId,
       accountId: data.accountId || null,
       vendor: data.vendor,
       date: new Date(data.date),
+      periodMonth,
       notes: data.notes,
       attachment: data.attachment,
       isRecurring: data.isRecurring || false,
@@ -113,6 +121,7 @@ export const expenseService = {
       accountId: string | null;
       vendor: string;
       date: string;
+      periodMonth: string;
       notes: string;
       attachment: string;
       isRecurring: boolean;
@@ -120,10 +129,17 @@ export const expenseService = {
     }>
   ) {
     await expenseService.getById(id);
-    const expense = await update<Expense>(COL.expenses, id, {
+    const updatePayload: Partial<Expense> = {
       ...data,
       date: data.date ? new Date(data.date) : undefined,
-    });
+    };
+    if (data.periodMonth !== undefined) {
+      if (!isValidPeriodMonth(data.periodMonth)) {
+        throw new AppError(400, 'periodMonth must be in YYYY-MM format');
+      }
+      updatePayload.periodMonth = data.periodMonth;
+    }
+    const expense = await update<Expense>(COL.expenses, id, updatePayload);
     return (await withRelations([expense]))[0];
   },
 

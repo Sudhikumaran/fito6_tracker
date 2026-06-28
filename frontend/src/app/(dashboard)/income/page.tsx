@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QueryState } from '@/components/ui/query-state';
 import { CategorySelectField } from '@/components/forms/category-select-field';
+import { CategoryManager } from '@/components/forms/category-manager';
 import { AccountSelectField } from '@/components/forms/account-select-field';
 import { api } from '@/lib/api';
 import { useApiQuery, useCategories, useAccounts, useInvalidate } from '@/hooks/use-api-query';
@@ -87,6 +88,12 @@ function IncomeContent() {
           </div>
           <Button onClick={() => setShowForm(!showForm)}><Plus className="h-4 w-4" /> Add Income</Button>
         </div>
+
+        <CategoryManager
+          type="INCOME"
+          categories={allCategories}
+          onUpdated={() => invalidate(queryKeys.categories('INCOME'))}
+        />
 
         {showForm && (
           <Card className="animate-fade-in">

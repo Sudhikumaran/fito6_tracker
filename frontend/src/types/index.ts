@@ -71,6 +71,7 @@ export interface Expense {
   account?: Account | null;
   vendor?: string;
   date: string;
+  periodMonth?: string | null;
   notes?: string;
   attachment?: string;
   isRecurring: boolean;

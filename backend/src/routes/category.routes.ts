@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { CategoryType } from '../types/enums';
-import { authenticate, adminOnly } from '../middleware/auth';
+import { authenticate, adminOnly, AuthRequest } from '../middleware/auth';
 import { auditLog } from '../middleware/auditLog';
 import { categoryService } from '../services/category.service';
 import { asyncHandler, sendSuccess } from '../utils/response';
@@ -36,10 +36,21 @@ router.post(
 
 router.put(
   '/:id',
-  adminOnly,
   auditLog('UPDATE_CATEGORY', 'Category'),
-  asyncHandler(async (req, res) => {
-    const category = await categoryService.update(req.params.id, req.body);
+  asyncHandler(async (req: AuthRequest, res) => {
+    const data = z
+      .object({
+        name: z.string().trim().min(2, 'Category name must be at least 2 characters').optional(),
+        parentId: z.string().nullable().optional(),
+        isActive: z.boolean().optional(),
+      })
+      .parse(req.body);
+
+    const { isActive, ...rest } = data;
+    const updateData =
+      req.user?.role === 'ADMIN' && isActive !== undefined ? data : rest;
+
+    const category = await categoryService.update(String(req.params.id), updateData);
     sendSuccess(res, category);
   })
 );

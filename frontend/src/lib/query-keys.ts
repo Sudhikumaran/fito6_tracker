@@ -10,6 +10,7 @@ export const queryKeys = {
   attendance: (isAdmin: boolean) => ['attendance', isAdmin] as const,
   documents: (search: string) => ['documents', search] as const,
   ledger: (params: string) => ['ledger', params] as const,
+  profitLoss: (periodMonth: string) => ['profit-loss', periodMonth] as const,
   notifications: ['notifications'] as const,
   auditLogs: ['audit-logs'] as const,
   settings: ['settings'] as const,

@@ -16,6 +16,10 @@ const createSchema = z.object({
   accountId: z.string().optional(),
   vendor: z.string().optional(),
   date: z.string(),
+  periodMonth: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use YYYY-MM format')
+    .optional(),
   notes: z.string().optional(),
   isRecurring: z.boolean().optional(),
   recurringDay: z.number().min(1).max(31).optional(),

@@ -71,6 +71,13 @@ export function prefetchRoute(queryClient: ReturnType<typeof useQueryClient>, hr
       return prefetch(queryKeys.settings, '/settings');
     case '/audit-logs':
       return prefetch(queryKeys.auditLogs, '/audit-logs');
+    case '/ledger':
+      return prefetch(queryKeys.ledger('page=1&limit=50&type=ALL'), '/ledger?page=1&limit=50&type=ALL');
+    case '/profit-loss': {
+      const month = new Date();
+      const periodMonth = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+      return prefetch(queryKeys.profitLoss(periodMonth), `/profit-loss?periodMonth=${periodMonth}`);
+    }
     default:
       return undefined;
   }

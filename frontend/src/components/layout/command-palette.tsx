@@ -15,6 +15,7 @@ import {
   FileText,
   Settings,
   BookOpen,
+  Scale,
 } from 'lucide-react';
 
 interface CommandPaletteProps {
@@ -37,6 +38,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       ? [
           { label: 'Staff Management', href: '/staff', icon: Users },
           { label: 'Ledger', href: '/ledger', icon: BookOpen },
+          { label: 'Profit & Loss', href: '/profit-loss', icon: Scale },
           { label: 'Analytics', href: '/analytics', icon: BarChart3 },
           { label: 'Reports', href: '/reports', icon: FileText },
           { label: 'Settings', href: '/settings', icon: Settings },

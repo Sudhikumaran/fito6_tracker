@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QueryState } from '@/components/ui/query-state';
 import { CategorySelectField } from '@/components/forms/category-select-field';
+import { CategoryManager } from '@/components/forms/category-manager';
 import { AccountSelectField } from '@/components/forms/account-select-field';
 import { api } from '@/lib/api';
 import { useApiQuery, useCategories, useAccounts, useInvalidate } from '@/hooks/use-api-query';
@@ -22,7 +23,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore, isAdmin } from '@/stores/auth.store';
 import type { Expense, PaginatedResponse } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { currentPeriodMonth, formatCurrency, formatDate, formatPeriodMonth, suggestExpensePeriodMonth } from '@/lib/utils';
 
 const schema = z.object({
   amount: z.coerce.number().positive(),
@@ -30,6 +31,7 @@ const schema = z.object({
   accountId: z.string().min(1, 'Select an account'),
   vendor: z.string().optional(),
   date: z.string().min(1),
+  periodMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Select bill-for month'),
   notes: z.string().optional(),
   isRecurring: z.boolean().optional(),
   recurringDay: z.coerce.number().min(1).max(31).optional(),
@@ -44,10 +46,19 @@ function ExpenseContent() {
   const [submitting, setSubmitting] = useState(false);
   const invalidate = useInvalidate();
 
-  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<z.infer<typeof schema>>({
+  const today = new Date().toISOString().split('T')[0];
+
+  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { date: new Date().toISOString().split('T')[0], isRecurring: false },
+    defaultValues: {
+      date: today,
+      periodMonth: suggestExpensePeriodMonth(today),
+      isRecurring: false,
+    },
   });
+
+  const paymentDate = watch('date');
+  const categoryId = watch('categoryId');
 
   const { data: allCategories = [] } = useCategories('EXPENSE');
   const parentGroups = allCategories.filter((c) => !c.parentId);
@@ -59,14 +70,25 @@ function ExpenseContent() {
   );
   const items = expenseRes?.items ?? [];
 
+  useEffect(() => {
+    if (!paymentDate) return;
+    const categoryName = categories.find((c) => c.id === categoryId)?.name;
+    setValue('periodMonth', suggestExpensePeriodMonth(paymentDate, categoryName));
+  }, [paymentDate, categoryId, categories, setValue]);
+
   const onSubmit = async (data: z.infer<typeof schema>) => {
     setSubmitting(true);
     try {
       await api.post('/expenses', data);
-      reset();
+      reset({
+        date: today,
+        periodMonth: suggestExpensePeriodMonth(today),
+        isRecurring: false,
+      });
       setShowForm(false);
       invalidate(queryKeys.expenses(debouncedSearch));
       invalidate(queryKeys.dashboard);
+      invalidate(queryKeys.profitLoss(currentPeriodMonth()));
     } finally {
       setSubmitting(false);
     }
@@ -90,6 +112,12 @@ function ExpenseContent() {
           </div>
           <Button onClick={() => setShowForm(!showForm)}><Plus className="h-4 w-4" /> Add Expense</Button>
         </div>
+
+        <CategoryManager
+          type="EXPENSE"
+          categories={allCategories}
+          onUpdated={() => invalidate(queryKeys.categories('EXPENSE'))}
+        />
 
         {showForm && (
           <Card className="animate-fade-in">
@@ -140,8 +168,19 @@ function ExpenseContent() {
                   <Input {...register('vendor')} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Date</Label>
+                  <Label>Payment Date</Label>
                   <Input type="date" {...register('date')} />
+                  <p className="text-xs text-muted-foreground">When money left your account (used in Ledger)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Bill For Month</Label>
+                  <Input type="month" {...register('periodMonth')} />
+                  {errors.periodMonth && (
+                    <p className="text-xs text-destructive">{errors.periodMonth.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Which month this expense belongs to (used in P&L). Rent/salary defaults to previous month.
+                  </p>
                 </div>
                 <div className="space-y-2 flex items-center gap-2 pt-6">
                   <input type="checkbox" {...register('isRecurring')} className="rounded" />
@@ -179,7 +218,8 @@ function ExpenseContent() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
-                      <th className="text-left p-4 font-medium">Date</th>
+                      <th className="text-left p-4 font-medium">Payment Date</th>
+                      <th className="text-left p-4 font-medium">Bill Month</th>
                       <th className="text-left p-4 font-medium">Category</th>
                       <th className="text-left p-4 font-medium">Account</th>
                       <th className="text-left p-4 font-medium">Vendor</th>
@@ -192,6 +232,11 @@ function ExpenseContent() {
                     {items.map((item) => (
                       <tr key={item.id} className="border-b border-border/50 hover:bg-accent/30">
                         <td className="p-4">{formatDate(item.date)}</td>
+                        <td className="p-4">
+                          <Badge variant="outline">
+                            {formatPeriodMonth(item.periodMonth || item.date.slice(0, 7))}
+                          </Badge>
+                        </td>
                         <td className="p-4"><Badge variant="secondary">{item.category?.name ?? 'Unknown'}</Badge></td>
                         <td className="p-4 text-muted-foreground">{item.account?.name ?? '—'}</td>
                         <td className="p-4 text-muted-foreground">{item.vendor || '—'}</td>
