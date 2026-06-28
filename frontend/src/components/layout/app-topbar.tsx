@@ -7,7 +7,7 @@ export function AppTopBar() {
   const { user } = useAuthStore();
 
   return (
-    <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border glass-strong px-6">
+    <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border glass-strong px-6">
       <BusinessSwitcher />
       <div className="flex items-center gap-3">
         <div className="hidden sm:block text-right">

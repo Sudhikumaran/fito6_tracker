@@ -16,6 +16,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { Header } from '@/components/layout/header';
+import { AccountsWalletMenu } from '@/components/dashboard/accounts-wallet-menu';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { DashboardChart } from '@/components/dashboard/charts';
 import { Button } from '@/components/ui/button';
@@ -55,13 +56,17 @@ export default function DashboardPage() {
     const adminData = data as AdminDashboard;
     return (
       <div>
-        <Header title="Dashboard" subtitle="Business overview and insights" />
+        <Header
+          title="Dashboard"
+          subtitle="Business overview and insights"
+          actions={<AccountsWalletMenu />}
+        />
         <div className="p-6 space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard title="Today Collection" value={adminData.cards.todayRevenue} icon={DollarSign} format="currency" />
             <StatCard title="Monthly Collection" value={adminData.cards.monthlyRevenue} icon={TrendingUp} format="currency" />
             <StatCard title="Yearly Collection" value={adminData.cards.yearlyRevenue ?? 0} icon={CalendarRange} format="currency" />
-            <StatCard title="Net Profit" value={adminData.cards.netProfit} icon={TrendingUp} format="currency" />
+            <StatCard title="Net Revenue" value={adminData.cards.netProfit} icon={TrendingUp} format="currency" />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Search, Command } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CommandPalette } from '@/components/layout/command-palette';
@@ -9,9 +9,10 @@ import { useAuthStore } from '@/stores/auth.store';
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  actions?: ReactNode;
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, actions }: HeaderProps) {
   const [commandOpen, setCommandOpen] = useState(false);
   const { user } = useAuthStore();
 
@@ -24,6 +25,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
+          {actions}
           <button
             onClick={() => setCommandOpen(true)}
             className="glass flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
