@@ -3,7 +3,9 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
+import { AppTopBar } from '@/components/layout/app-topbar';
 import { useAuthStore } from '@/stores/auth.store';
+import { useBusinessStore } from '@/stores/business.store';
 
 function AuthLoading() {
   return (
@@ -22,6 +24,7 @@ function AuthLoading() {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, token, hasHydrated, fetchProfile, setHasHydrated } = useAuthStore();
+  const { activeBusinessId, isLoading, fetchBusinesses } = useBusinessStore();
 
   useEffect(() => {
     if (useAuthStore.persist.hasHydrated()) {
@@ -46,10 +49,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!user) fetchProfile();
   }, [hasHydrated, token, user, router, fetchProfile]);
 
-  if (!hasHydrated || !token || !user) {
+  useEffect(() => {
+    if (user && token) {
+      fetchBusinesses().catch(() => undefined);
+    }
+  }, [user, token, fetchBusinesses]);
+
+  if (!hasHydrated || !token || !user || isLoading || !activeBusinessId) {
     return (
       <div className="min-h-screen gradient-mesh">
+        <Sidebar />
         <main className="pl-64 min-h-screen">
+          <AppTopBar />
           <AuthLoading />
         </main>
       </div>
@@ -60,6 +71,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen gradient-mesh">
       <Sidebar />
       <main className="pl-64 min-h-screen">
+        <AppTopBar />
         {children}
       </main>
     </div>

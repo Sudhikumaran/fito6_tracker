@@ -2,7 +2,7 @@ import { Income } from '../types/models';
 import {
   COL,
   create,
-  findMany,
+  findManyForBusiness,
   getById,
   getAccountMap,
   getCategoryMap,
@@ -14,6 +14,7 @@ import {
   sortBy,
   update,
 } from '../lib/firestore';
+import { assertBusinessAccess } from '../lib/business-scope';
 import { AppError } from '../utils/response';
 
 interface IncomeFilters {
@@ -53,12 +54,12 @@ async function withRelations(items: Income[]) {
 }
 
 export const incomeService = {
-  async list(filters: IncomeFilters) {
+  async list(businessId: string, filters: IncomeFilters) {
     const { search, categoryId, dateFrom, dateTo, page = 1, limit = 20 } = filters;
     const from = dateFrom ? new Date(dateFrom) : undefined;
     const to = dateTo ? new Date(dateTo) : undefined;
 
-    let items = await findMany<Income>(COL.income, (item) => {
+    let items = await findManyForBusiness<Income>(COL.income, businessId, (item) => {
       if (categoryId && item.categoryId !== categoryId) return false;
       if (!inDateRange(item.date, from, to)) return false;
       if (!matchesSearch(search, item.source, item.notes)) return false;
@@ -70,13 +71,13 @@ export const incomeService = {
     return { ...paged, items: await withRelations(paged.items) };
   },
 
-  async getById(id: string) {
-    const income = await getById<Income>(COL.income, id);
-    if (!income) throw new AppError(404, 'Income record not found');
+  async getById(businessId: string, id: string) {
+    const income = assertBusinessAccess(await getById<Income>(COL.income, id), businessId, 'Income record');
     return (await withRelations([income]))[0];
   },
 
   async create(data: {
+    businessId: string;
     amount: number;
     categoryId: string;
     accountId?: string;
@@ -87,6 +88,7 @@ export const incomeService = {
     createdById: string;
   }) {
     const income = await create<Income>(COL.income, {
+      businessId: data.businessId,
       amount: data.amount,
       categoryId: data.categoryId,
       accountId: data.accountId || null,
@@ -100,6 +102,7 @@ export const incomeService = {
   },
 
   async update(
+    businessId: string,
     id: string,
     data: Partial<{
       amount: number;
@@ -111,7 +114,7 @@ export const incomeService = {
       attachment: string;
     }>
   ) {
-    await incomeService.getById(id);
+    await incomeService.getById(businessId, id);
     const income = await update<Income>(COL.income, id, {
       ...data,
       date: data.date ? new Date(data.date) : undefined,
@@ -119,8 +122,8 @@ export const incomeService = {
     return (await withRelations([income]))[0];
   },
 
-  async delete(id: string) {
-    await incomeService.getById(id);
+  async delete(businessId: string, id: string) {
+    await incomeService.getById(businessId, id);
     await remove(COL.income, id);
     return { message: 'Income deleted' };
   },

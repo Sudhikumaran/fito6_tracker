@@ -2,18 +2,20 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { AccountType } from '../types/enums';
 import { authenticate, adminOnly, AuthRequest } from '../middleware/auth';
+import { requireBusiness, BusinessRequest } from '../middleware/business';
 import { auditLog } from '../middleware/auditLog';
 import { accountService } from '../services/account.service';
 import { asyncHandler, sendSuccess } from '../utils/response';
 
 const router = Router();
 router.use(authenticate);
+router.use(requireBusiness);
 
 router.get(
   '/',
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: BusinessRequest, res) => {
     const type = req.query.type as AccountType | undefined;
-    const accounts = await accountService.list(type);
+    const accounts = await accountService.list(req.businessId!, type);
     sendSuccess(res, accounts);
   })
 );
@@ -21,7 +23,7 @@ router.get(
 router.post(
   '/',
   auditLog('CREATE_ACCOUNT', 'Account'),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: BusinessRequest, res) => {
     const data = z
       .object({
         name: z.string().trim().min(2, 'Account name must be at least 2 characters'),
@@ -31,7 +33,7 @@ router.post(
         openingBalance: z.coerce.number().optional(),
       })
       .parse(req.body);
-    const account = await accountService.create(data);
+    const account = await accountService.create({ ...data, businessId: req.businessId! });
     sendSuccess(res, account, 201);
   })
 );
@@ -39,7 +41,7 @@ router.post(
 router.put(
   '/:id',
   auditLog('UPDATE_ACCOUNT', 'Account'),
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest & BusinessRequest, res) => {
     const data = z
       .object({
         name: z.string().trim().min(2).optional(),
@@ -54,7 +56,7 @@ router.put(
     const { isActive, ...rest } = data;
     const updateData = req.user?.role === 'ADMIN' && isActive !== undefined ? data : rest;
 
-    const account = await accountService.update(String(req.params.id), updateData);
+    const account = await accountService.update(req.businessId!, String(req.params.id), updateData);
     sendSuccess(res, account);
   })
 );
@@ -63,8 +65,8 @@ router.delete(
   '/:id',
   adminOnly,
   auditLog('DELETE_ACCOUNT', 'Account'),
-  asyncHandler(async (req, res) => {
-    const account = await accountService.delete(req.params.id);
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const account = await accountService.delete(req.businessId!, String(req.params.id));
     sendSuccess(res, account);
   })
 );

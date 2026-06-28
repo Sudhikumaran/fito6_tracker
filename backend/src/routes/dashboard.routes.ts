@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Role } from '../types/enums';
-import { authenticate, AuthRequest, authorize } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import { requireBusiness, BusinessRequest } from '../middleware/business';
 import { authService } from '../services/auth.service';
 import { dashboardService } from '../services/dashboard.service';
 import { asyncHandler, sendSuccess } from '../utils/response';
@@ -19,12 +20,13 @@ router.get(
 
 router.get(
   '/dashboard',
-  asyncHandler(async (req: AuthRequest, res) => {
+  requireBusiness,
+  asyncHandler(async (req: BusinessRequest, res) => {
     if (req.user!.role === Role.ADMIN) {
-      const data = await dashboardService.getAdminDashboard();
+      const data = await dashboardService.getAdminDashboard(req.businessId!);
       sendSuccess(res, data);
     } else {
-      const data = await dashboardService.getStaffDashboard(req.user!.userId);
+      const data = await dashboardService.getStaffDashboard(req.businessId!, req.user!.userId);
       sendSuccess(res, data);
     }
   })

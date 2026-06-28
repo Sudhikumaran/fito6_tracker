@@ -1,3 +1,5 @@
+import { getActiveBusinessId } from '@/stores/business.store';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -22,6 +24,13 @@ class ApiClient {
 
     if (token) {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
+    const businessId = getActiveBusinessId();
+    const skipBusinessHeader =
+      endpoint.startsWith('/auth') || endpoint.startsWith('/businesses');
+    if (businessId && !skipBusinessHeader) {
+      (headers as Record<string, string>)['X-Business-Id'] = businessId;
     }
 
     const controller = new AbortController();

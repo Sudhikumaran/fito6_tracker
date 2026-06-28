@@ -2,7 +2,7 @@ import { Expense, Party } from '../types/models';
 import {
   COL,
   create,
-  findMany,
+  findManyForBusiness,
   getById,
   getAccountMap,
   getCategoryMap,
@@ -15,6 +15,7 @@ import {
   sortBy,
   update,
 } from '../lib/firestore';
+import { assertBusinessAccess } from '../lib/business-scope';
 import { isValidPeriodMonth, periodMonthFromDate } from '../utils/period';
 import { AppError } from '../utils/response';
 
@@ -63,13 +64,20 @@ async function withRelations(items: Expense[]) {
   }));
 }
 
-async function resolvePartyFields(data: { partyId?: string; vendor?: string }) {
+async function resolvePartyFields(
+  businessId: string,
+  data: { partyId?: string; vendor?: string }
+) {
   if (!data.partyId) {
     return { partyId: null as string | null, vendor: data.vendor?.trim() || null };
   }
 
-  const party = await getById<Party>(COL.parties, data.partyId);
-  if (!party || !party.isActive) {
+  const party = assertBusinessAccess(
+    await getById<Party>(COL.parties, data.partyId),
+    businessId,
+    'Party'
+  );
+  if (!party.isActive) {
     throw new AppError(400, 'Invalid party selected');
   }
 
@@ -77,12 +85,12 @@ async function resolvePartyFields(data: { partyId?: string; vendor?: string }) {
 }
 
 export const expenseService = {
-  async list(filters: ExpenseFilters) {
+  async list(businessId: string, filters: ExpenseFilters) {
     const { search, categoryId, dateFrom, dateTo, isRecurring, page = 1, limit = 20 } = filters;
     const from = dateFrom ? new Date(dateFrom) : undefined;
     const to = dateTo ? new Date(dateTo) : undefined;
 
-    let items = await findMany<Expense>(COL.expenses, (item) => {
+    let items = await findManyForBusiness<Expense>(COL.expenses, businessId, (item) => {
       if (categoryId && item.categoryId !== categoryId) return false;
       if (isRecurring !== undefined && item.isRecurring !== isRecurring) return false;
       if (!inDateRange(item.date, from, to)) return false;
@@ -95,13 +103,17 @@ export const expenseService = {
     return { ...paged, items: await withRelations(paged.items) };
   },
 
-  async getById(id: string) {
-    const expense = await getById<Expense>(COL.expenses, id);
-    if (!expense) throw new AppError(404, 'Expense record not found');
+  async getById(businessId: string, id: string) {
+    const expense = assertBusinessAccess(
+      await getById<Expense>(COL.expenses, id),
+      businessId,
+      'Expense record'
+    );
     return (await withRelations([expense]))[0];
   },
 
   async create(data: {
+    businessId: string;
     amount: number;
     categoryId: string;
     accountId?: string;
@@ -119,9 +131,10 @@ export const expenseService = {
       data.periodMonth && isValidPeriodMonth(data.periodMonth)
         ? data.periodMonth
         : periodMonthFromDate(data.date);
-    const { partyId, vendor } = await resolvePartyFields(data);
+    const { partyId, vendor } = await resolvePartyFields(data.businessId, data);
 
     const expense = await create<Expense>(COL.expenses, {
+      businessId: data.businessId,
       amount: data.amount,
       categoryId: data.categoryId,
       accountId: data.accountId || null,
@@ -139,6 +152,7 @@ export const expenseService = {
   },
 
   async update(
+    businessId: string,
     id: string,
     data: Partial<{
       amount: number;
@@ -154,14 +168,14 @@ export const expenseService = {
       recurringDay: number;
     }>
   ) {
-    await expenseService.getById(id);
+    await expenseService.getById(businessId, id);
     const updatePayload: Partial<Expense> = {
       ...data,
       date: data.date ? new Date(data.date) : undefined,
     };
 
     if (data.partyId !== undefined || data.vendor !== undefined) {
-      const resolved = await resolvePartyFields({
+      const resolved = await resolvePartyFields(businessId, {
         partyId: data.partyId ?? undefined,
         vendor: data.vendor,
       });
@@ -186,8 +200,8 @@ export const expenseService = {
     return (await withRelations([expense]))[0];
   },
 
-  async delete(id: string) {
-    await expenseService.getById(id);
+  async delete(businessId: string, id: string) {
+    await expenseService.getById(businessId, id);
     await remove(COL.expenses, id);
     return { message: 'Expense deleted' };
   },

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, adminOnly } from '../middleware/auth';
+import { requireBusiness, BusinessRequest } from '../middleware/business';
 import { auditService, settingsService } from '../services/audit.service';
 import { asyncHandler, sendSuccess } from '../utils/response';
 
@@ -23,6 +24,7 @@ export default router;
 
 const settingsRouter = Router();
 settingsRouter.use(authenticate);
+settingsRouter.use(requireBusiness);
 
 const DEFAULT_ENTRY_FIELDS = {
   income: { category: true, paymentMode: true },
@@ -31,8 +33,8 @@ const DEFAULT_ENTRY_FIELDS = {
 
 settingsRouter.get(
   '/entry-fields',
-  asyncHandler(async (_req, res) => {
-    const value = await settingsService.get('entry_fields');
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const value = await settingsService.get('entry_fields', req.businessId!);
     sendSuccess(res, value ?? DEFAULT_ENTRY_FIELDS);
   })
 );
@@ -41,16 +43,16 @@ settingsRouter.use(adminOnly);
 
 settingsRouter.get(
   '/',
-  asyncHandler(async (_req, res) => {
-    const settings = await settingsService.getAll();
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const settings = await settingsService.getAll(req.businessId!);
     sendSuccess(res, settings);
   })
 );
 
 settingsRouter.put(
   '/:key',
-  asyncHandler(async (req, res) => {
-    const setting = await settingsService.set(req.params.key, req.body.value);
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const setting = await settingsService.set(String(req.params.key), req.body.value, req.businessId!);
     sendSuccess(res, setting);
   })
 );

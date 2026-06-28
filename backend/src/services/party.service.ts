@@ -1,25 +1,41 @@
 import { PartyType } from '../types/enums';
 import { Party } from '../types/models';
-import { COL, create, findMany, getById, sortBy, update } from '../lib/firestore';
+import {
+  COL,
+  create,
+  findManyForBusiness,
+  getById,
+  sortBy,
+  update,
+} from '../lib/firestore';
+import { assertBusinessAccess } from '../lib/business-scope';
 import { AppError } from '../utils/response';
 
 export const partyService = {
-  async list(type?: PartyType) {
-    const parties = await findMany<Party>(
+  async list(businessId: string, type?: PartyType) {
+    const parties = await findManyForBusiness<Party>(
       COL.parties,
+      businessId,
       (p) => p.isActive && (!type || p.type === type)
     );
     return sortBy(parties, 'name', 'asc');
   },
 
-  async create(data: { name: string; type: PartyType; phone?: string; notes?: string }) {
+  async create(data: {
+    businessId: string;
+    name: string;
+    type: PartyType;
+    phone?: string;
+    notes?: string;
+  }) {
     const name = data.name.trim();
-    const existing = (await findMany<Party>(COL.parties)).find(
+    const existing = (await findManyForBusiness<Party>(COL.parties, data.businessId)).find(
       (p) => p.isActive && p.name.toLowerCase() === name.toLowerCase()
     );
     if (existing) return existing;
 
     return create<Party>(COL.parties, {
+      businessId: data.businessId,
       name,
       type: data.type,
       phone: data.phone?.trim() || null,
@@ -29,6 +45,7 @@ export const partyService = {
   },
 
   async update(
+    businessId: string,
     id: string,
     data: {
       name?: string;
@@ -38,13 +55,12 @@ export const partyService = {
       isActive?: boolean;
     }
   ) {
-    const party = await getById<Party>(COL.parties, id);
-    if (!party) throw new AppError(404, 'Party not found');
+    assertBusinessAccess(await getById<Party>(COL.parties, id), businessId, 'Party');
 
     if (data.name !== undefined) {
       const name = data.name.trim();
       if (name.length < 2) throw new AppError(400, 'Party name must be at least 2 characters');
-      const duplicate = (await findMany<Party>(COL.parties)).find(
+      const duplicate = (await findManyForBusiness<Party>(COL.parties, businessId)).find(
         (p) => p.id !== id && p.isActive && p.name.toLowerCase() === name.toLowerCase()
       );
       if (duplicate) throw new AppError(409, 'Party already exists');
@@ -58,9 +74,8 @@ export const partyService = {
     });
   },
 
-  async delete(id: string) {
-    const party = await getById<Party>(COL.parties, id);
-    if (!party) throw new AppError(404, 'Party not found');
+  async delete(businessId: string, id: string) {
+    assertBusinessAccess(await getById<Party>(COL.parties, id), businessId, 'Party');
     return update<Party>(COL.parties, id, { isActive: false });
   },
 };

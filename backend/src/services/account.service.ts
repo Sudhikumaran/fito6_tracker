@@ -1,12 +1,20 @@
 import { AccountType } from '../types/enums';
 import { Account } from '../types/models';
-import { COL, create, findMany, getById, sortBy, update } from '../lib/firestore';
-import { AppError } from '../utils/response';
+import {
+  COL,
+  create,
+  findManyForBusiness,
+  getById,
+  sortBy,
+  update,
+} from '../lib/firestore';
+import { assertBusinessAccess } from '../lib/business-scope';
 
 export const accountService = {
-  async list(type?: AccountType) {
-    const accounts = await findMany<Account>(
+  async list(businessId: string, type?: AccountType) {
+    const accounts = await findManyForBusiness<Account>(
       COL.accounts,
+      businessId,
       (a) => a.isActive && (!type || a.type === type)
     );
     return sortBy(accounts, 'name', 'asc').map((account) => ({
@@ -16,18 +24,23 @@ export const accountService = {
   },
 
   async create(data: {
+    businessId: string;
     name: string;
     type: AccountType;
     bankName?: string;
     lastFour?: string;
     openingBalance?: number;
   }) {
-    const existing = (await findMany<Account>(COL.accounts)).find(
-      (a) => a.name.toLowerCase() === data.name.trim().toLowerCase() && a.type === data.type && a.isActive
+    const existing = (await findManyForBusiness<Account>(COL.accounts, data.businessId)).find(
+      (a) =>
+        a.name.toLowerCase() === data.name.trim().toLowerCase() &&
+        a.type === data.type &&
+        a.isActive
     );
     if (existing) return existing;
 
     return create<Account>(COL.accounts, {
+      businessId: data.businessId,
       name: data.name.trim(),
       type: data.type,
       bankName: data.bankName?.trim() || null,
@@ -38,6 +51,7 @@ export const accountService = {
   },
 
   async update(
+    businessId: string,
     id: string,
     data: {
       name?: string;
@@ -48,8 +62,7 @@ export const accountService = {
       isActive?: boolean;
     }
   ) {
-    const account = await getById<Account>(COL.accounts, id);
-    if (!account) throw new AppError(404, 'Account not found');
+    assertBusinessAccess(await getById<Account>(COL.accounts, id), businessId, 'Account');
     return update<Account>(COL.accounts, id, {
       ...data,
       name: data.name?.trim(),
@@ -58,9 +71,8 @@ export const accountService = {
     });
   },
 
-  async delete(id: string) {
-    const account = await getById<Account>(COL.accounts, id);
-    if (!account) throw new AppError(404, 'Account not found');
+  async delete(businessId: string, id: string) {
+    assertBusinessAccess(await getById<Account>(COL.accounts, id), businessId, 'Account');
     return update<Account>(COL.accounts, id, { isActive: false });
   },
 };

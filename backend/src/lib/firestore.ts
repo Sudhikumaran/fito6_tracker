@@ -4,6 +4,8 @@ import { db } from './firebase';
 
 export const COL = {
   users: 'users',
+  businesses: 'businesses',
+  businessMembers: 'business_members',
   staff: 'staff',
   categories: 'categories',
   accounts: 'accounts',
@@ -73,6 +75,17 @@ export async function findOne<T>(
   if (snap.empty) return null;
   const doc = snap.docs[0];
   return deserializeDoc<T>(doc.id, doc.data());
+}
+
+export async function findManyForBusiness<T extends { businessId?: string | null }>(
+  collection: string,
+  businessId: string,
+  predicate?: (item: T & { id: string }) => boolean
+): Promise<(T & { id: string })[]> {
+  return findMany<T>(collection, (item) => {
+    if (item.businessId !== businessId) return false;
+    return predicate ? predicate(item) : true;
+  });
 }
 
 export async function findMany<T>(

@@ -1,5 +1,5 @@
 import { Category, Expense, Income } from '../types/models';
-import { COL, findMany, getCategoryMap, inDateRange, sumAmounts } from '../lib/firestore';
+import { COL, findManyForBusiness, getCategoryMap, inDateRange, sumAmounts } from '../lib/firestore';
 import {
   periodMonthFromDate,
   periodMonthInRange,
@@ -18,7 +18,7 @@ function defaultPeriodMonth(): string {
 }
 
 export const profitLossService = {
-  async getStatement(filters: ProfitLossFilters = {}) {
+  async getStatement(businessId: string, filters: ProfitLossFilters = {}) {
     const periodMonth = filters.periodMonth || defaultPeriodMonth();
     const periodFrom = filters.periodFrom || periodMonth;
     const periodTo = filters.periodTo || periodMonth;
@@ -27,9 +27,9 @@ export const profitLossService = {
     const incomeEndRange = periodMonthToDateRange(periodTo).end;
 
     const [incomes, expenses, categories] = await Promise.all([
-      findMany<Income>(COL.income),
-      findMany<Expense>(COL.expenses),
-      findMany<Category>(COL.categories),
+      findManyForBusiness<Income>(COL.income, businessId),
+      findManyForBusiness<Expense>(COL.expenses, businessId),
+      findManyForBusiness<Category>(COL.categories, businessId),
     ]);
 
     const categoryMap = await getCategoryMap(categories.map((c) => c.id));

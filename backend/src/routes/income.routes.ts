@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate, AuthRequest, adminOnly } from '../middleware/auth';
+import { requireBusiness, BusinessRequest } from '../middleware/business';
 import { auditLog } from '../middleware/auditLog';
 import { upload } from '../middleware/upload';
 import { uploadFile } from '../lib/storage';
@@ -9,6 +10,7 @@ import { asyncHandler, sendSuccess } from '../utils/response';
 
 const router = Router();
 router.use(authenticate);
+router.use(requireBusiness);
 
 const createSchema = z.object({
   amount: z.number().positive(),
@@ -21,8 +23,8 @@ const createSchema = z.object({
 
 router.get(
   '/',
-  asyncHandler(async (req: AuthRequest, res) => {
-    const result = await incomeService.list({
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const result = await incomeService.list(req.businessId!, {
       search: req.query.search as string,
       categoryId: req.query.categoryId as string,
       dateFrom: req.query.dateFrom as string,
@@ -36,8 +38,8 @@ router.get(
 
 router.get(
   '/:id',
-  asyncHandler(async (req, res) => {
-    const item = await incomeService.getById(req.params.id);
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const item = await incomeService.getById(req.businessId!, String(req.params.id));
     sendSuccess(res, item);
   })
 );
@@ -45,7 +47,7 @@ router.get(
 router.post(
   '/',
   upload.single('attachment'),
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: BusinessRequest, res) => {
     const data = createSchema.parse({ ...req.body, amount: parseFloat(req.body.amount) });
     let attachment: string | undefined;
     if (req.file) {
@@ -54,6 +56,7 @@ router.post(
     }
     const item = await incomeService.create({
       ...data,
+      businessId: req.businessId!,
       attachment,
       createdById: req.user!.userId,
     });
@@ -65,14 +68,14 @@ router.put(
   '/:id',
   auditLog('UPDATE_INCOME', 'Income'),
   upload.single('attachment'),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: BusinessRequest, res) => {
     const body = { ...req.body };
     if (body.amount) body.amount = parseFloat(body.amount);
     if (req.file) {
       const uploaded = await uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
       body.attachment = uploaded.path;
     }
-    const item = await incomeService.update(req.params.id, body);
+    const item = await incomeService.update(req.businessId!, String(req.params.id), body);
     sendSuccess(res, item);
   })
 );
@@ -81,8 +84,8 @@ router.delete(
   '/:id',
   adminOnly,
   auditLog('DELETE_INCOME', 'Income'),
-  asyncHandler(async (req, res) => {
-    const result = await incomeService.delete(req.params.id);
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const result = await incomeService.delete(req.businessId!, String(req.params.id));
     sendSuccess(res, result);
   })
 );

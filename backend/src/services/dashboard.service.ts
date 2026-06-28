@@ -3,6 +3,7 @@ import { Attendance, Expense, Income, Task, User } from '../types/models';
 import {
   COL,
   findMany,
+  findManyForBusiness,
   getById,
   getCategoryMap,
   getAccountMap,
@@ -14,7 +15,7 @@ import {
 } from '../lib/firestore';
 
 export const dashboardService = {
-  async getAdminDashboard() {
+  async getAdminDashboard(businessId: string) {
     const now = new Date();
     const startOfDay = startOfDayDate(now);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -22,8 +23,8 @@ export const dashboardService = {
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
     const [incomes, expenses, staff, attendance] = await Promise.all([
-      findMany<Income>(COL.income),
-      findMany<Expense>(COL.expenses),
+      findManyForBusiness<Income>(COL.income, businessId),
+      findManyForBusiness<Expense>(COL.expenses, businessId),
       findMany<User>(COL.users, (u) => u.role === Role.STAFF && u.isActive),
       findMany<Attendance>(COL.attendance),
     ]);
@@ -68,14 +69,14 @@ export const dashboardService = {
     };
   },
 
-  async getStaffDashboard(userId: string) {
+  async getStaffDashboard(businessId: string, userId: string) {
     const startOfDay = startOfDayDate(new Date());
 
     const [todayAttendance, tasks, recentIncome, recentExpense] = await Promise.all([
       getById<Attendance>(COL.attendance, `${userId}_${startOfDay.toISOString().split('T')[0]}`),
       findMany<Task>(COL.tasks, (t) => t.assignedToId === userId && t.status !== 'COMPLETED'),
-      findMany<Income>(COL.income, (i) => i.createdById === userId),
-      findMany<Expense>(COL.expenses, (e) => e.createdById === userId),
+      findManyForBusiness<Income>(COL.income, businessId, (i) => i.createdById === userId),
+      findManyForBusiness<Expense>(COL.expenses, businessId, (e) => e.createdById === userId),
     ]);
 
     const sortedTasks = sortBy(tasks, 'dueDate', 'asc').slice(0, 5);

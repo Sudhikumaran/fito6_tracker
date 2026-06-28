@@ -1,16 +1,18 @@
 import { Router } from 'express';
 import { authenticate, adminOnly } from '../middleware/auth';
+import { requireBusiness, BusinessRequest } from '../middleware/business';
 import { ledgerService, LedgerType } from '../services/ledger.service';
 import { asyncHandler, sendSuccess } from '../utils/response';
 
 const router = Router();
 router.use(authenticate);
+router.use(requireBusiness);
 router.use(adminOnly);
 
 router.get(
   '/',
-  asyncHandler(async (req, res) => {
-    const result = await ledgerService.getLedger({
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const result = await ledgerService.getLedger(req.businessId!, {
       search: req.query.search as string,
       type: (req.query.type as LedgerType) || 'ALL',
       dateFrom: req.query.dateFrom as string,
@@ -24,8 +26,8 @@ router.get(
 
 router.get(
   '/export',
-  asyncHandler(async (req, res) => {
-    const csv = await ledgerService.exportCsv({
+  asyncHandler(async (req: BusinessRequest, res) => {
+    const csv = await ledgerService.exportCsv(req.businessId!, {
       search: req.query.search as string,
       type: (req.query.type as LedgerType) || 'ALL',
       dateFrom: req.query.dateFrom as string,

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ReportFormat } from '../types/enums';
 import { authenticate, AuthRequest, adminOnly } from '../middleware/auth';
+import { requireBusiness, BusinessRequest } from '../middleware/business';
 import { auditLog } from '../middleware/auditLog';
 import { reportService } from '../services/report.service';
 import { asyncHandler, sendSuccess } from '../utils/response';
@@ -19,51 +20,74 @@ const generateSchema = z.object({
 
 router.get(
   '/',
-  asyncHandler(async (req: AuthRequest, res) => {
+  requireBusiness,
+  asyncHandler(async (req: AuthRequest & BusinessRequest, res) => {
     const userId = req.user!.role === 'STAFF' ? req.user!.userId : undefined;
-    const reports = await reportService.list(userId);
+    const reports = await reportService.list(req.businessId!, userId);
     sendSuccess(res, reports);
   })
 );
 
 router.post(
   '/income',
+  requireBusiness,
   adminOnly,
   auditLog('GENERATE_INCOME_REPORT', 'Report'),
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest & BusinessRequest, res) => {
     const { dateFrom, dateTo, format } = generateSchema.parse(req.body);
-    const result = await reportService.generateIncomeReport(dateFrom!, dateTo!, format, req.user!.userId);
+    const result = await reportService.generateIncomeReport(
+      req.businessId!,
+      dateFrom!,
+      dateTo!,
+      format,
+      req.user!.userId
+    );
     sendSuccess(res, result);
   })
 );
 
 router.post(
   '/expense',
+  requireBusiness,
   adminOnly,
   auditLog('GENERATE_EXPENSE_REPORT', 'Report'),
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest & BusinessRequest, res) => {
     const { dateFrom, dateTo, format } = generateSchema.parse(req.body);
-    const result = await reportService.generateExpenseReport(dateFrom!, dateTo!, format, req.user!.userId);
+    const result = await reportService.generateExpenseReport(
+      req.businessId!,
+      dateFrom!,
+      dateTo!,
+      format,
+      req.user!.userId
+    );
     sendSuccess(res, result);
   })
 );
 
 router.post(
   '/profit-loss',
+  requireBusiness,
   adminOnly,
   auditLog('GENERATE_PL_REPORT', 'Report'),
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest & BusinessRequest, res) => {
     const { dateFrom, dateTo, format } = generateSchema.parse(req.body);
-    const result = await reportService.generateProfitLossReport(dateFrom!, dateTo!, format, req.user!.userId);
+    const result = await reportService.generateProfitLossReport(
+      req.businessId!,
+      dateFrom!,
+      dateTo!,
+      format,
+      req.user!.userId
+    );
     sendSuccess(res, result);
   })
 );
 
 router.post(
   '/transactions',
+  requireBusiness,
   adminOnly,
   auditLog('GENERATE_TRANSACTION_REPORT', 'Report'),
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest & BusinessRequest, res) => {
     const body = generateSchema
       .extend({
         groupBy: z
@@ -72,6 +96,7 @@ router.post(
       })
       .parse(req.body);
     const result = await reportService.generateTransactionExport(
+      req.businessId!,
       body.dateFrom!,
       body.dateTo!,
       body.format,

@@ -1,5 +1,5 @@
 import { Expense, Income } from '../types/models';
-import { COL, findMany, getCategoryMap, inDateRange, sumAmounts } from '../lib/firestore';
+import { COL, findManyForBusiness, getCategoryMap, inDateRange, sumAmounts } from '../lib/firestore';
 import { periodMonthFromDate, periodMonthInRange, resolveExpensePeriodMonth } from '../utils/period';
 
 type Period = 'daily' | 'weekly' | 'monthly';
@@ -54,15 +54,25 @@ function sumByPeriod(
 }
 
 export const analyticsService = {
-  async getRevenueAnalytics(input?: { period?: Period; dateFrom?: string; dateTo?: string }) {
+  async getRevenueAnalytics(
+    businessId: string,
+    input?: { period?: Period; dateFrom?: string; dateTo?: string }
+  ) {
     const { since, until, period } = getDateRange(input);
-    const items = (await findMany<Income>(COL.income)).filter((i) => inDateRange(i.date, since, until));
+    const items = await findManyForBusiness<Income>(COL.income, businessId, (i) =>
+      inDateRange(i.date, since, until)
+    );
     return { period, data: sumByPeriod(items, period) };
   },
 
-  async getExpenseAnalytics(input?: { dateFrom?: string; dateTo?: string; period?: Period }) {
+  async getExpenseAnalytics(
+    businessId: string,
+    input?: { dateFrom?: string; dateTo?: string; period?: Period }
+  ) {
     const { since, until, period } = getDateRange(input);
-    const expenses = (await findMany<Expense>(COL.expenses)).filter((e) => inDateRange(e.date, since, until));
+    const expenses = await findManyForBusiness<Expense>(COL.expenses, businessId, (e) =>
+      inDateRange(e.date, since, until)
+    );
 
     const categoryTotals = new Map<string, number>();
     for (const expense of expenses) {
@@ -87,7 +97,10 @@ export const analyticsService = {
     return { categoryBreakdown, monthlyTrends };
   },
 
-  async getProfitAnalytics(input?: { dateFrom?: string; dateTo?: string }) {
+  async getProfitAnalytics(
+    businessId: string,
+    input?: { dateFrom?: string; dateTo?: string }
+  ) {
     const now = new Date();
     const startOfMonth = input?.dateFrom ? new Date(input.dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfRange = input?.dateTo ? new Date(input.dateTo) : undefined;
@@ -99,8 +112,8 @@ export const analyticsService = {
     const periodTo = input?.dateTo ? periodMonthFromDate(input.dateTo) : periodFrom;
 
     const [incomes, expenses] = await Promise.all([
-      findMany<Income>(COL.income),
-      findMany<Expense>(COL.expenses),
+      findManyForBusiness<Income>(COL.income, businessId),
+      findManyForBusiness<Expense>(COL.expenses, businessId),
     ]);
 
     const grossRevenue = sumAmounts(incomes, startOfMonth, endOfRange);
@@ -128,12 +141,15 @@ export const analyticsService = {
     };
   },
 
-  async getCashFlowAnalytics(input?: { dateFrom?: string; dateTo?: string; period?: Period }) {
+  async getCashFlowAnalytics(
+    businessId: string,
+    input?: { dateFrom?: string; dateTo?: string; period?: Period }
+  ) {
     const { since, until, period } = getDateRange(input);
 
     const [incomes, expenses] = await Promise.all([
-      findMany<Income>(COL.income),
-      findMany<Expense>(COL.expenses),
+      findManyForBusiness<Income>(COL.income, businessId),
+      findManyForBusiness<Expense>(COL.expenses, businessId),
     ]);
 
     const filteredIncomes = incomes.filter((i) => inDateRange(i.date, since, until));

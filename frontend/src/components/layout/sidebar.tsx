@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { prefetchRoute } from '@/hooks/use-api-query';
 import { useAuthStore, isAdmin } from '@/stores/auth.store';
+import { useBusinessStore } from '@/stores/business.store';
 import { Button } from '@/components/ui/button';
 
 const adminNav = [
@@ -66,6 +67,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const { user, logout } = useAuthStore();
+  const activeBusiness = useBusinessStore((s) =>
+    s.businesses.find((b) => b.id === s.activeBusinessId)
+  );
   const nav = isAdmin(user) ? adminNav : staffNav;
 
   return (
@@ -81,7 +85,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
         {!collapsed && (
           <div>
-            <h1 className="font-bold text-sm">Fito6</h1>
+            <h1 className="font-bold text-sm truncate max-w-[140px]">
+              {activeBusiness?.name || 'Fito6'}
+            </h1>
             <p className="text-xs text-muted-foreground">Finance Tracker</p>
           </div>
         )}

@@ -7,6 +7,7 @@ import { pingFirebase } from './lib/firebase';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 import authRoutes from './routes/auth.routes';
+import businessRoutes from './routes/business.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import incomeRoutes from './routes/income.routes';
 import expenseRoutes from './routes/expense.routes';
@@ -75,6 +76,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/businesses', businessRoutes);
 app.use('/api', dashboardRoutes);
 app.use('/api/income', incomeRoutes);
 app.use('/api/expenses', expenseRoutes);

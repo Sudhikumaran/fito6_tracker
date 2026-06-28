@@ -36,6 +36,7 @@ export interface Staff {
 
 export interface Category {
   id: string;
+  businessId?: string | null;
   name: string;
   type: CategoryType;
   parentId?: string | null;
@@ -46,6 +47,7 @@ export interface Category {
 
 export interface Account {
   id: string;
+  businessId?: string | null;
   name: string;
   type: AccountType;
   bankName?: string | null;
@@ -58,6 +60,7 @@ export interface Account {
 
 export interface Party {
   id: string;
+  businessId?: string | null;
   name: string;
   type: PartyType;
   phone?: string | null;
@@ -69,6 +72,7 @@ export interface Party {
 
 export interface Income {
   id: string;
+  businessId?: string | null;
   amount: number;
   categoryId: string;
   accountId?: string | null;
@@ -83,6 +87,7 @@ export interface Income {
 
 export interface Expense {
   id: string;
+  businessId?: string | null;
   amount: number;
   categoryId: string;
   accountId?: string | null;
@@ -150,6 +155,7 @@ export interface Notification {
 
 export interface Report {
   id: string;
+  businessId?: string | null;
   type: ReportType;
   format: ReportFormat;
   title: string;
@@ -175,6 +181,25 @@ export interface AuditLog {
 export interface Setting {
   id: string;
   key: string;
+  businessId?: string | null;
   value: Record<string, unknown>;
+  updatedAt: Date;
+}
+
+export interface Business {
+  id: string;
+  name: string;
+  createdById: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BusinessMember {
+  id: string;
+  businessId: string;
+  userId: string;
+  role: Role;
+  isActive: boolean;
+  createdAt: Date;
   updatedAt: Date;
 }

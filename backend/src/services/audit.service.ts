@@ -28,21 +28,50 @@ export const auditService = {
 };
 
 export const settingsService = {
-  async get(key: string) {
-    const setting = await findOne<Setting>(COL.settings, 'key', key);
-    return setting?.value ?? null;
+  scopedKey(key: string, businessId?: string) {
+    return businessId ? `${businessId}:${key}` : key;
   },
 
-  async getAll() {
-    const settings = await findMany<Setting>(COL.settings);
-    return Object.fromEntries(settings.map((s) => [s.key, s.value]));
-  },
-
-  async set(key: string, value: unknown) {
-    const existing = await findOne<Setting>(COL.settings, 'key', key);
-    if (existing) {
-      return update<Setting>(COL.settings, existing.id, { value: value as Record<string, unknown> });
+  async get(key: string, businessId?: string) {
+    const setting = await findOne<Setting>(COL.settings, 'key', this.scopedKey(key, businessId));
+    if (setting) return setting.value ?? null;
+    if (businessId) {
+      const legacy = await findOne<Setting>(COL.settings, 'key', key);
+      return legacy?.value ?? null;
     }
-    return create<Setting>(COL.settings, { key, value: value as Record<string, unknown> });
+    return null;
+  },
+
+  async getAll(businessId?: string) {
+    const settings = await findMany<Setting>(COL.settings);
+    const prefix = businessId ? `${businessId}:` : null;
+    const entries = settings
+      .filter((s) => {
+        if (!businessId) return !s.key.includes(':');
+        return s.key.startsWith(`${businessId}:`);
+      })
+      .map((s) => [prefix ? s.key.slice(prefix.length) : s.key, s.value] as const);
+
+    if (businessId && entries.length === 0) {
+      const legacy = settings.filter((s) => !s.key.includes(':'));
+      return Object.fromEntries(legacy.map((s) => [s.key, s.value]));
+    }
+
+    return Object.fromEntries(entries);
+  },
+
+  async set(key: string, value: unknown, businessId?: string) {
+    const fullKey = this.scopedKey(key, businessId);
+    const existing = await findOne<Setting>(COL.settings, 'key', fullKey);
+    if (existing) {
+      return update<Setting>(COL.settings, existing.id, {
+        value: value as Record<string, unknown>,
+      });
+    }
+    return create<Setting>(COL.settings, {
+      key: fullKey,
+      businessId: businessId || null,
+      value: value as Record<string, unknown>,
+    });
   },
 };

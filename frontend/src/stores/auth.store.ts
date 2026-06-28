@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 import { api } from '@/lib/api';
+import { useBusinessStore } from '@/stores/business.store';
 
 interface AuthState {
   user: User | null;
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
           });
           localStorage.setItem('token', result.token);
           set({ token: result.token, user: result.user, isLoading: false });
+          useBusinessStore.getState().fetchBusinesses().catch(() => undefined);
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -40,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         localStorage.removeItem('token');
+        useBusinessStore.getState().reset();
         set({ user: null, token: null });
       },
 

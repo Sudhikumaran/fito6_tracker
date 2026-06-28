@@ -1,6 +1,6 @@
 import { AccountType, ReportFormat, ReportType } from '../types/enums';
 import { Attendance, Expense, Income, Report } from '../types/models';
-import { COL, create, findMany, getAccountMap, getCategoryMap, getUserMap, inDateRange, sortBy, sumAmounts } from '../lib/firestore';
+import { COL, create, findMany, findManyForBusiness, getAccountMap, getCategoryMap, getUserMap, inDateRange, sortBy, sumAmounts } from '../lib/firestore';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 
@@ -84,14 +84,18 @@ interface UnifiedTransaction {
   notes: string;
 }
 
-async function loadTransactions(dateFrom: string, dateTo: string): Promise<UnifiedTransaction[]> {
+async function loadTransactions(
+  businessId: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<UnifiedTransaction[]> {
   const from = new Date(dateFrom);
   const to = new Date(dateTo);
   to.setHours(23, 59, 59, 999);
 
   const [incomes, expenses] = await Promise.all([
-    findMany<Income>(COL.income, (i) => inDateRange(i.date, from, to)),
-    findMany<Expense>(COL.expenses, (e) => inDateRange(e.date, from, to)),
+    findManyForBusiness<Income>(COL.income, businessId, (i) => inDateRange(i.date, from, to)),
+    findManyForBusiness<Expense>(COL.expenses, businessId, (e) => inDateRange(e.date, from, to)),
   ]);
 
   const categoryMap = await getCategoryMap([
@@ -263,10 +267,18 @@ async function buildReportBlob(args: {
 }
 
 export const reportService = {
-  async generateIncomeReport(dateFrom: string, dateTo: string, format: ReportFormat, userId: string) {
+  async generateIncomeReport(
+    businessId: string,
+    dateFrom: string,
+    dateTo: string,
+    format: ReportFormat,
+    userId: string
+  ) {
     const from = new Date(dateFrom);
     const to = new Date(dateTo);
-    const items = (await findMany<Income>(COL.income)).filter((i) => inDateRange(i.date, from, to));
+    const items = await findManyForBusiness<Income>(COL.income, businessId, (i) =>
+      inDateRange(i.date, from, to)
+    );
     const sorted = sortBy(items, 'date', 'desc');
     const categoryMap = await getCategoryMap(sorted.map((i) => i.categoryId));
     const userMap = await getUserMap(sorted.map((i) => i.createdById));
@@ -289,6 +301,7 @@ export const reportService = {
     });
 
     const report = await create<Report>(COL.reports, {
+      businessId,
       type: ReportType.INCOME,
       format,
       title: `Income Report ${dateFrom} to ${dateTo}`,
@@ -300,10 +313,18 @@ export const reportService = {
     return { report, ...blob, rows, total };
   },
 
-  async generateExpenseReport(dateFrom: string, dateTo: string, format: ReportFormat, userId: string) {
+  async generateExpenseReport(
+    businessId: string,
+    dateFrom: string,
+    dateTo: string,
+    format: ReportFormat,
+    userId: string
+  ) {
     const from = new Date(dateFrom);
     const to = new Date(dateTo);
-    const items = (await findMany<Expense>(COL.expenses)).filter((e) => inDateRange(e.date, from, to));
+    const items = await findManyForBusiness<Expense>(COL.expenses, businessId, (e) =>
+      inDateRange(e.date, from, to)
+    );
     const sorted = sortBy(items, 'date', 'desc');
     const categoryMap = await getCategoryMap(sorted.map((e) => e.categoryId));
     const userMap = await getUserMap(sorted.map((e) => e.createdById));
@@ -326,6 +347,7 @@ export const reportService = {
     });
 
     const report = await create<Report>(COL.reports, {
+      businessId,
       type: ReportType.EXPENSE,
       format,
       title: `Expense Report ${dateFrom} to ${dateTo}`,
@@ -337,12 +359,18 @@ export const reportService = {
     return { report, ...blob, rows, total };
   },
 
-  async generateProfitLossReport(dateFrom: string, dateTo: string, format: ReportFormat, userId: string) {
+  async generateProfitLossReport(
+    businessId: string,
+    dateFrom: string,
+    dateTo: string,
+    format: ReportFormat,
+    userId: string
+  ) {
     const from = new Date(dateFrom);
     const to = new Date(dateTo);
     const [incomes, expenses] = await Promise.all([
-      findMany<Income>(COL.income),
-      findMany<Expense>(COL.expenses),
+      findManyForBusiness<Income>(COL.income, businessId),
+      findManyForBusiness<Expense>(COL.expenses, businessId),
     ]);
 
     const totalIncome = sumAmounts(incomes, from, to);
@@ -364,6 +392,7 @@ export const reportService = {
     });
 
     const report = await create<Report>(COL.reports, {
+      businessId,
       type: ReportType.PROFIT_LOSS,
       format,
       title: `P&L Report ${dateFrom} to ${dateTo}`,
@@ -376,13 +405,14 @@ export const reportService = {
   },
 
   async generateTransactionExport(
+    businessId: string,
     dateFrom: string,
     dateTo: string,
     format: ReportFormat,
     groupBy: TransactionGroupBy,
     userId: string
   ) {
-    const transactions = await loadTransactions(dateFrom, dateTo);
+    const transactions = await loadTransactions(businessId, dateFrom, dateTo);
     const rows = groupTransactions(transactions, groupBy);
 
     const groupLabels: Record<TransactionGroupBy, string> = {
@@ -402,6 +432,7 @@ export const reportService = {
     });
 
     const report = await create<Report>(COL.reports, {
+      businessId,
       type: ReportType.TRANSACTIONS,
       format,
       title: `Transactions (${label}) ${dateFrom} to ${dateTo}`,
@@ -450,8 +481,12 @@ export const reportService = {
     return { report, ...blob, rows };
   },
 
-  async list(userId?: string) {
-    const items = await findMany<Report>(COL.reports, (r) => !userId || r.generatedById === userId);
+  async list(businessId: string, userId?: string) {
+    const items = await findManyForBusiness<Report>(
+      COL.reports,
+      businessId,
+      (r) => !userId || r.generatedById === userId
+    );
     const sorted = sortBy(items, 'createdAt', 'desc').slice(0, 50);
     const userMap = await getUserMap(sorted.map((r) => r.generatedById));
     return sorted.map((r) => ({

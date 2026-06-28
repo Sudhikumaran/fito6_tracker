@@ -1,7 +1,7 @@
 import { Category, Expense, Income } from '../types/models';
 import {
   COL,
-  findMany,
+  findManyForBusiness,
   getCategoryMap,
   getUserMap,
   inDateRange,
@@ -37,7 +37,7 @@ export interface LedgerEntry {
 }
 
 export const ledgerService = {
-  async getLedger(filters: LedgerFilters) {
+  async getLedger(businessId: string, filters: LedgerFilters) {
     const { search, type = 'ALL', dateFrom, dateTo, page = 1, limit = 50 } = filters;
 
     const dateToEnd = dateTo ? new Date(dateTo) : undefined;
@@ -48,15 +48,19 @@ export const ledgerService = {
     let openingBalance = 0;
     if (dateFromStart) {
       const [incomes, expenses] = await Promise.all([
-        findMany<Income>(COL.income, (i) => i.date < dateFromStart),
-        findMany<Expense>(COL.expenses, (e) => e.date < dateFromStart),
+        findManyForBusiness<Income>(COL.income, businessId, (i) => i.date < dateFromStart),
+        findManyForBusiness<Expense>(COL.expenses, businessId, (e) => e.date < dateFromStart),
       ]);
       openingBalance = sumAmounts(incomes) - sumAmounts(expenses);
     }
 
     const [incomes, expenses] = await Promise.all([
-      type !== 'EXPENSE' ? findMany<Income>(COL.income) : Promise.resolve([] as Income[]),
-      type !== 'INCOME' ? findMany<Expense>(COL.expenses) : Promise.resolve([] as Expense[]),
+      type !== 'EXPENSE'
+        ? findManyForBusiness<Income>(COL.income, businessId)
+        : Promise.resolve([] as Income[]),
+      type !== 'INCOME'
+        ? findManyForBusiness<Expense>(COL.expenses, businessId)
+        : Promise.resolve([] as Expense[]),
     ]);
 
     const allCategoryIds = [...incomes.map((i) => i.categoryId), ...expenses.map((e) => e.categoryId)];
@@ -136,8 +140,12 @@ export const ledgerService = {
     };
   },
 
-  async exportCsv(filters: LedgerFilters) {
-    const { entries, summary } = await ledgerService.getLedger({ ...filters, page: 1, limit: 100000 });
+  async exportCsv(businessId: string, filters: LedgerFilters) {
+    const { entries, summary } = await ledgerService.getLedger(businessId, {
+      ...filters,
+      page: 1,
+      limit: 100000,
+    });
     const lines = [
       'Date,Type,Description,Category,Debit,Credit,Balance,Created By',
       ...entries.map((e) =>
