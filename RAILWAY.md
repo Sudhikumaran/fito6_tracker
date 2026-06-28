@@ -44,7 +44,8 @@ service cloud.firestore {
 | `NODE_ENV` | `production` |
 | `JWT_SECRET` | Random string, **32+ characters** |
 | `JWT_EXPIRES_IN` | `7d` |
-| `FRONTEND_URL` | `https://${{Frontend.RAILWAY_PUBLIC_DOMAIN}}` |
+| `FRONTEND_URL` | `https://fito6.biglitz.in` (your custom domain; **no trailing slash**) |
+| `ALLOWED_ORIGINS` | *(optional)* `https://${{Frontend.RAILWAY_PUBLIC_DOMAIN}}` if you still need the Railway URL |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Full service account JSON (single line) |
 | `FIREBASE_STORAGE_BUCKET` | `your-project-id.appspot.com` |
 
@@ -73,7 +74,16 @@ ADMIN_EMAIL=you@yourdomain.com ADMIN_PASSWORD=YourSecurePass1 ADMIN_NAME=Admin n
 | `NEXT_PUBLIC_API_URL` | `https://${{Backend.RAILWAY_PUBLIC_DOMAIN}}/api` |
 
 4. **Networking** → **Generate Domain**.
-5. Redeploy **backend** so `FRONTEND_URL` matches the frontend domain.
+5. Redeploy **backend** after changing `FRONTEND_URL` (CORS is enforced on the **backend** service, not the frontend).
+
+### Custom domain (e.g. fito6.biglitz.in)
+
+1. Add the custom domain on the **frontend** service in Railway → Networking.
+2. On the **backend** service, set `FRONTEND_URL` to `https://fito6.biglitz.in` exactly (https, no trailing `/`).
+3. Redeploy the **backend** (not just the frontend).
+4. Keep `NEXT_PUBLIC_API_URL` on the frontend pointing at the **backend** Railway URL, e.g. `https://${{Backend.RAILWAY_PUBLIC_DOMAIN}}/api`.
+
+If login fails with a CORS error in the browser console, open the backend deploy logs — blocked origins are logged with the list of allowed values.
 
 ## Local development
 

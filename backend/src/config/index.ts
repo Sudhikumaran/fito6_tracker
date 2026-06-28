@@ -8,6 +8,33 @@ dotenv.config();
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
 
+/** Normalize to `protocol//host` so trailing slashes and paths do not break CORS matching. */
+export function normalizeOrigin(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+
+  try {
+    const parsed = new URL(trimmed);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return trimmed.replace(/\/+$/, '');
+  }
+}
+
+function parseAllowedOrigins(...sources: (string | undefined)[]): string[] {
+  const origins = new Set<string>();
+
+  for (const source of sources) {
+    if (!source) continue;
+    for (const part of source.split(',')) {
+      const normalized = normalizeOrigin(part);
+      if (normalized) origins.add(normalized);
+    }
+  }
+
+  return [...origins];
+}
+
 function requireEnv(name: string, value: string | undefined): string {
   if (!value) {
     if (isProduction) {
@@ -100,7 +127,10 @@ export const config = {
     secret: jwtSecret,
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  allowedOrigins: parseAllowedOrigins(process.env.FRONTEND_URL, process.env.ALLOWED_ORIGINS),
+  frontendUrl:
+    normalizeOrigin(process.env.FRONTEND_URL?.split(',')[0]?.trim() || '') ||
+    'http://localhost:3000',
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: parseInt(process.env.SMTP_PORT || '587', 10),

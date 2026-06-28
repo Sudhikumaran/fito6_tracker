@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { config } from './config';
+import { config, normalizeOrigin } from './config';
 import { pingFirebase } from './lib/firebase';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
@@ -33,13 +33,22 @@ app.use(
   cors({
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
-      const allowed = new Set([config.frontendUrl]);
+
+      const allowed = new Set(config.allowedOrigins);
       if (!config.isProduction) {
         allowed.add('http://localhost:3000');
         allowed.add('http://localhost:3001');
       }
-      if (allowed.has(origin)) return cb(null, true);
-      return cb(new Error(`CORS blocked for origin: ${origin}`));
+
+      if (allowed.has(normalizeOrigin(origin))) return cb(null, true);
+
+      if (config.isProduction) {
+        console.warn(
+          `CORS blocked origin: ${origin} (allowed: ${[...allowed].join(', ') || 'none'})`
+        );
+      }
+
+      return cb(null, false);
     },
     credentials: true,
   })
